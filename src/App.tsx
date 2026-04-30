@@ -1,1035 +1,1017 @@
-import {useEffect, useMemo, useState} from 'react';
-import {motion, AnimatePresence} from 'motion/react';
-import {
-  Award,
-  Briefcase,
-  Building2,
-  Check,
-  ChevronRight,
-  Clock,
-  Globe2,
-  Languages,
-  Mail,
-  MapPin,
-  Menu,
-  MessageCircle,
-  Phone,
-  Shield,
-  Sparkles,
-  Star,
-  X,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
+import { Check, Shield, Clock, Award, Star, MessageCircle, Menu, X, Phone, Mail, Instagram, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
-type Lang = 'ru' | 'en' | 'zh';
-type CitySlug = 'astana' | 'almaty' | 'shymkent';
-type ServiceSlug = 'transfer' | 'rent-car-with-driver' | 'corporate-clients';
-
-type PageKind = 'home' | 'city' | 'service';
-
-const DOMAIN = 'https://tulparauto.kz';
-const PHONE = '+7 775 343 24 48';
-const WHATSAPP = 'https://wa.me/77753432448';
-
-const LANGS: Record<Lang, {label: string; short: string; hreflang: string}> = {
-  ru: {label: 'Русский', short: 'RU', hreflang: 'ru-KZ'},
-  en: {label: 'English', short: 'EN', hreflang: 'en-KZ'},
-  zh: {label: '中文', short: 'ZH', hreflang: 'zh-CN'},
-};
-
-const CITIES: Record<CitySlug, Record<Lang, {name: string; airport: string; local: string}>> = {
-  astana: {
-    ru: {name: 'Астана', airport: 'аэропорт NQZ', local: 'деловые кварталы, отели, госучреждения и площадки форумов'},
-    en: {name: 'Astana', airport: 'NQZ airport', local: 'business districts, hotels, government venues and forum sites'},
-    zh: {name: '阿斯塔纳', airport: 'NQZ机场', local: '商务区、酒店、政府机构和论坛场地'},
-  },
-  almaty: {
-    ru: {name: 'Алматы', airport: 'аэропорт Алматы', local: 'отели, бизнес-центры, Медеу и загородные маршруты'},
-    en: {name: 'Almaty', airport: 'Almaty airport', local: 'hotels, business centers, Medeu and mountain routes'},
-    zh: {name: '阿拉木图', airport: '阿拉木图机场', local: '酒店、商务中心、Medeu和山区路线'},
-  },
-  shymkent: {
-    ru: {name: 'Шымкент', airport: 'аэропорт Шымкент', local: 'деловые районы города и маршруты по Туркестанской области'},
-    en: {name: 'Shymkent', airport: 'Shymkent airport', local: 'city business routes and trips across the Turkistan region'},
-    zh: {name: '奇姆肯特', airport: '奇姆肯特机场', local: '城市商务路线和突厥斯坦地区行程'},
-  },
-};
-
-const SERVICE_PATHS: Record<Lang, Record<ServiceSlug, string>> = {
-  ru: {
-    transfer: 'transfer',
-    'rent-car-with-driver': 'rent-car-with-driver',
-    'corporate-clients': 'corporate-clients',
-  },
-  en: {
-    transfer: 'transfer',
-    'rent-car-with-driver': 'chauffeur-service',
-    'corporate-clients': 'corporate-transport',
-  },
-  zh: {
-    transfer: 'transfer',
-    'rent-car-with-driver': 'chauffeur-service',
-    'corporate-clients': 'corporate-transport',
-  },
-};
-
-const SERVICES: Record<ServiceSlug, Record<Lang, {label: string; nav: string; title: string; description: string; keywords: string[]; icon: typeof MapPin}>> = {
-  transfer: {
-    ru: {
-      label: 'Трансфер',
-      nav: 'Трансфер',
-      title: 'Премиальный трансфер с водителем',
-      description: 'Встреча в аэропорту, трансфер до отеля, офиса, мероприятия или частного адреса с профессиональным водителем и заранее согласованным маршрутом.',
-      keywords: ['трансфер из аэропорта', 'VIP трансфер', 'встреча гостей', 'трансфер для делегаций'],
-      icon: MapPin,
-    },
-    en: {
-      label: 'Transfer',
-      nav: 'Transfer',
-      title: 'Premium airport and city transfer',
-      description: 'Airport meet-and-greet, hotel transfer, office routes, event arrivals and private address drop-offs with a professional chauffeur.',
-      keywords: ['airport transfer', 'VIP transfer', 'meet and greet', 'delegation transfer'],
-      icon: MapPin,
-    },
-    zh: {
-      label: '接送服务',
-      nav: '接送',
-      title: '高端机场及城市接送服务',
-      description: '提供机场接机、酒店接送、商务路线、活动抵达和私人地址接送服务，配备专业司机并提前确认路线。',
-      keywords: ['机场接送', '贵宾接送', '商务接送', '代表团接送'],
-      icon: MapPin,
-    },
-  },
-  'rent-car-with-driver': {
-    ru: {
-      label: 'Аренда авто с водителем',
-      nav: 'Авто с водителем',
-      title: 'Аренда автомобиля с профессиональным водителем',
-      description: 'Почасовая аренда, аренда на день, поездки по городу, деловые встречи, свадьбы, съемки, загородные маршруты и сопровождение гостей.',
-      keywords: ['аренда авто с водителем', 'машина с водителем', 'премиум авто с водителем', 'аренда Mercedes с водителем'],
-      icon: Sparkles,
-    },
-    en: {
-      label: 'Car with Driver',
-      nav: 'Chauffeur Service',
-      title: 'Chauffeur-driven car rental',
-      description: 'Hourly and daily chauffeur service for business meetings, private routes, weddings, production days, events and guest support.',
-      keywords: ['car with driver', 'chauffeur service', 'premium car rental with driver', 'Mercedes chauffeur'],
-      icon: Sparkles,
-    },
-    zh: {
-      label: '带司机租车',
-      nav: '带司机租车',
-      title: '专业司机高端租车服务',
-      description: '按小时或全天提供商务会议、私人行程、婚礼、拍摄、活动和来宾陪同用车服务。',
-      keywords: ['带司机租车', '商务用车', '高端租车', '奔驰司机服务'],
-      icon: Sparkles,
-    },
-  },
-  'corporate-clients': {
-    ru: {
-      label: 'Корпоративным клиентам',
-      nav: 'Для бизнеса',
-      title: 'Транспортное обслуживание для компаний',
-      description: 'Корпоративный транспорт для сотрудников, партнеров, делегаций, форумов, конференций и регулярных маршрутов с документами для бухгалтерии.',
-      keywords: ['корпоративный транспорт', 'транспорт для делегаций', 'авто для мероприятий', 'перевозка сотрудников'],
-      icon: Briefcase,
-    },
-    en: {
-      label: 'Corporate Clients',
-      nav: 'Corporate',
-      title: 'Corporate transportation for companies',
-      description: 'Business transport for teams, partners, delegations, forums, conferences and recurring routes with clear documentation for accounting.',
-      keywords: ['corporate transportation', 'delegation transport', 'event transport', 'employee shuttle'],
-      icon: Briefcase,
-    },
-    zh: {
-      label: '企业客户',
-      nav: '企业用车',
-      title: '企业和代表团交通服务',
-      description: '为员工、合作伙伴、代表团、论坛、会议和固定路线提供商务交通服务，并支持企业结算文件。',
-      keywords: ['企业交通服务', '代表团用车', '活动用车', '员工通勤'],
-      icon: Briefcase,
-    },
-  },
-};
-
-const UI: Record<Lang, {
-  menu: string;
-  close: string;
-  home: string;
-  cities: string;
-  services: string;
-  fleet: string;
-  clients: string;
-  contacts: string;
-  reserve: string;
-  consult: string;
-  why: string;
-  cityHeading: string;
-  servicesHeading: string;
-  faqHeading: string;
-  sitemapHeading: string;
-  routePrefix: string;
-  footerNote: string;
-}> = {
-  ru: {
-    menu: 'Меню',
-    close: 'Закрыть',
-    home: 'Главная',
-    cities: 'Города',
-    services: 'Услуги',
-    fleet: 'Автопарк',
-    clients: 'Клиенты',
-    contacts: 'Контакты',
-    reserve: 'Оставить заявку',
-    consult: 'Получить консультацию',
-    why: 'Стандарт сервиса',
-    cityHeading: 'Городские направления',
-    servicesHeading: 'Услуги Tulpar Auto',
-    faqHeading: 'Частые вопросы',
-    sitemapHeading: 'SEO-структура сайта',
-    routePrefix: 'Маршрут',
-    footerNote: 'Премиальный трансфер, аренда авто с водителем и корпоративный транспорт в Казахстане.',
-  },
-  en: {
-    menu: 'Menu',
-    close: 'Close',
-    home: 'Home',
-    cities: 'Cities',
-    services: 'Services',
-    fleet: 'Fleet',
-    clients: 'Clients',
-    contacts: 'Contacts',
-    reserve: 'Request a booking',
-    consult: 'Get consultation',
-    why: 'Service standard',
-    cityHeading: 'City destinations',
-    servicesHeading: 'Tulpar Auto services',
-    faqHeading: 'FAQ',
-    sitemapHeading: 'SEO site structure',
-    routePrefix: 'Route',
-    footerNote: 'Premium transfers, chauffeur service and corporate transport in Kazakhstan.',
-  },
-  zh: {
-    menu: '菜单',
-    close: '关闭',
-    home: '首页',
-    cities: '城市',
-    services: '服务',
-    fleet: '车队',
-    clients: '客户',
-    contacts: '联系',
-    reserve: '预约服务',
-    consult: '获取咨询',
-    why: '服务标准',
-    cityHeading: '服务城市',
-    servicesHeading: 'Tulpar Auto服务',
-    faqHeading: '常见问题',
-    sitemapHeading: 'SEO网站结构',
-    routePrefix: '路线',
-    footerNote: '哈萨克斯坦高端接送、带司机租车和企业交通服务。',
-  },
-};
-
-const COPY: Record<Lang, {
-  eyebrow: string;
-  homeH1: string;
-  homeLead: string;
-  cityLead: (city: string, airport: string, local: string) => string;
-  serviceLead: (service: string, city: string, airport: string) => string;
-  proof: string[];
-  process: {title: string; text: string}[];
-  fleetIntro: string;
-  corporateIntro: string;
-  faq: {q: string; a: string}[];
-}> = {
-  ru: {
-    eyebrow: 'Премиальный транспорт в Казахстане',
-    homeH1: 'Трансфер и аренда авто с водителем в Астане, Алматы и Шымкенте',
-    homeLead: 'Tulpar Auto организует премиальные поездки для деловых гостей, частных клиентов, компаний и делегаций. Мы объединяем пунктуальную подачу, чистый автомобиль, профессионального водителя и понятную коммуникацию до, во время и после поездки.',
-    cityLead: (city, airport, local) => `Tulpar Auto предоставляет автомобили с водителем в городе ${city}: трансфер из ${airport}, поездки между ${local}, сопровождение мероприятий, делегаций и частных маршрутов. Страница оптимизирована под локальный спрос, чтобы клиент сразу видел релевантную услугу в своем городе.`,
-    serviceLead: (service, city, airport) => `${service} в городе ${city} подходит для деловых встреч, гостей из аэропорта, частных маршрутов и мероприятий. Мы заранее согласуем время подачи, класс автомобиля, маршрут, ожидание и дополнительные пожелания пассажиров. Для рейсов учитываем ${airport}.`,
-    proof: ['Подача точно по времени', 'Автомобили бизнес- и представительского класса', 'Русский, английский и китайский языки', 'Безналичная оплата и документы для компаний'],
-    process: [
-      {title: 'Заявка', text: 'Уточняем город, дату, маршрут, количество пассажиров и нужный класс автомобиля.'},
-      {title: 'Подтверждение', text: 'Фиксируем водителя, автомобиль, точку встречи, контакты и формат оплаты.'},
-      {title: 'Поездка', text: 'Водитель приезжает заранее, помогает с багажом и сопровождает маршрут без лишнего ожидания.'},
+const CAR_FLEET = [
+  {
+    class: 'Executive',
+    name: 'Mercedes-Benz S-Class',
+    img: 'https://tulparauto.kz/img/ms223.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/ms223.jpg',
+      '	https://tulparauto.kz/img/maybachnew/3.jpg',
+      '	https://tulparauto.kz/img/maybachnew/4.jpg'
     ],
-    fleetIntro: 'В структуре сайта автопарк должен поддерживать коммерческие страницы: седаны бизнес-класса, представительские автомобили, внедорожники, минивэны и автобусы для групп.',
-    corporateIntro: 'Для компаний важно показать не только премиальность, но и операционную надежность: регулярные заявки, документы, единый менеджер, обслуживание делегаций и мероприятий.',
-    faq: [
-      {q: 'Можно ли заказать трансфер из аэропорта?', a: 'Да, водитель встретит пассажира в аэропорту, поможет с багажом и доставит по согласованному адресу.'},
-      {q: 'Можно ли арендовать автомобиль на несколько часов?', a: 'Да, доступна почасовая аренда, аренда на день и индивидуальные условия для длительных маршрутов.'},
-      {q: 'Работаете ли вы с корпоративными клиентами?', a: 'Да, мы обслуживаем компании, делегации, конференции, форумы, сотрудников и партнеров.'},
-      {q: 'В каких городах доступен сервис?', a: 'Основные города: Астана, Алматы и Шымкент. Междугородние маршруты согласуются отдельно.'},
+    desc: 'The pinnacle of modern luxury and driving technology. Perfect for executive transfers.',
+    features: ['Massage Seats', 'Evian Water', 'Wi-Fi 5G']
+  },
+  {
+    class: 'VIP',
+    name: 'Mercedes-Maybach S',
+    img: 'https://tulparauto.kz/img/photo/1571909968_0.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/photo/1571909968_0.jpg',
+      'https://tulparauto.kz/img/s222new/3.jpg',
+      'https://tulparauto.kz/img/s222new/4.jpg'
     ],
+    desc: 'Unprecedented comfort and acoustic privacy. The ultimate statement of prestige.',
+    features: ['Champagne Flutes', 'Reclining Rear Seats', 'Acoustic Comfort']
   },
-  en: {
-    eyebrow: 'Premium transportation in Kazakhstan',
-    homeH1: 'Transfers and chauffeur-driven cars in Astana, Almaty and Shymkent',
-    homeLead: 'Tulpar Auto arranges premium journeys for business guests, private clients, companies and delegations. Every route is built around punctual arrival, a prepared vehicle, a professional chauffeur and clear communication.',
-    cityLead: (city, airport, local) => `Tulpar Auto provides chauffeur-driven cars in ${city}: transfers from ${airport}, routes across ${local}, event transportation, delegation support and private itineraries. Each city page targets local search intent with clear service relevance.`,
-    serviceLead: (service, city, airport) => `${service} in ${city} is designed for business meetings, airport guests, private routes and events. We confirm pickup time, vehicle class, route details, waiting time and passenger preferences in advance. Flight arrivals are coordinated through ${airport}.`,
-    proof: ['On-time pickup', 'Business and executive class fleet', 'Russian, English and Chinese support', 'Cashless payment and company documents'],
-    process: [
-      {title: 'Request', text: 'We confirm the city, date, route, passenger count and the right vehicle class.'},
-      {title: 'Confirmation', text: 'We lock the chauffeur, vehicle, meeting point, contacts and payment format.'},
-      {title: 'Journey', text: 'The chauffeur arrives early, assists with luggage and keeps the route calm and efficient.'},
+  {
+    class: 'Delegation',
+    name: 'Mercedes-Benz V-Class',
+    img: 'https://tulparauto.kz/img/photo/08-v-class-250-d-wallpaper-4K.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/photo/08-v-class-250-d-wallpaper-4K.jpg',
+      'https://tulparauto.kz/img/vclass/54f6c08e-fd79-48b8-88e7-b576914e43cf.jpg',
+      'https://tulparauto.kz/img/vclass/74b99ece-823f-4767-9d83-d61f1958a781.jpg'
     ],
-    fleetIntro: 'The fleet section supports commercial pages with business sedans, executive vehicles, SUVs, minivans and buses for groups.',
-    corporateIntro: 'Corporate pages should prove operational reliability: recurring requests, documents, a dedicated manager, delegation support and event logistics.',
-    faq: [
-      {q: 'Can I book an airport transfer?', a: 'Yes, the chauffeur can meet the passenger at the airport, assist with luggage and drive to the agreed address.'},
-      {q: 'Can I rent a car with driver for a few hours?', a: 'Yes, hourly bookings, full-day service and custom long-route conditions are available.'},
-      {q: 'Do you work with corporate clients?', a: 'Yes, we serve companies, delegations, conferences, forums, employees and business partners.'},
-      {q: 'Which cities are covered?', a: 'Core cities are Astana, Almaty and Shymkent. Intercity routes are arranged on request.'},
-    ],
-  },
-  zh: {
-    eyebrow: '哈萨克斯坦高端交通服务',
-    homeH1: '阿斯塔纳、阿拉木图和奇姆肯特接送及带司机租车',
-    homeLead: 'Tulpar Auto为商务来宾、私人客户、企业和代表团安排高端出行。每一次服务都注重准时到达、车辆整洁、专业司机和清晰沟通。',
-    cityLead: (city, airport, local) => `Tulpar Auto在${city}提供带司机用车服务：${airport}接送、${local}路线、活动交通、代表团接待和私人行程。每个城市页面都围绕本地搜索需求建立清晰内容。`,
-    serviceLead: (service, city, airport) => `${city}${service}适合商务会议、机场来宾、私人路线和活动用车。我们会提前确认上车时间、车型、路线、等待时间和乘客需求，并根据${airport}航班安排接送。`,
-    proof: ['准时到达', '商务级和行政级车辆', '俄语、英语、中文支持', '企业无现金支付和文件'],
-    process: [
-      {title: '提交需求', text: '确认城市、日期、路线、乘客人数和所需车型。'},
-      {title: '确认安排', text: '确认司机、车辆、会面地点、联系方式和付款方式。'},
-      {title: '完成行程', text: '司机提前到达，协助行李，并确保路线舒适高效。'},
-    ],
-    fleetIntro: '车队页面需要支持商业页面：商务轿车、行政级车辆、SUV、商务车和团队巴士。',
-    corporateIntro: '企业页面应突出运营可靠性：长期申请、文件、专属经理、代表团接待和活动交通安排。',
-    faq: [
-      {q: '可以预约机场接送吗？', a: '可以，司机将在机场迎接乘客，协助行李，并送达约定地址。'},
-      {q: '可以按小时租带司机车辆吗？', a: '可以，支持按小时、全天和定制长路线服务。'},
-      {q: '是否服务企业客户？', a: '是的，我们为公司、代表团、会议、论坛、员工和合作伙伴提供服务。'},
-      {q: '服务覆盖哪些城市？', a: '核心城市为阿斯塔纳、阿拉木图和奇姆肯特。城际路线可单独确认。'},
-    ],
-  },
-};
-
-const CITY_SEO: Record<CitySlug, Record<Lang, {districts: string[]; routes: string[]; demand: string}>> = {
-  astana: {
-    ru: {
-      districts: ['аэропорт NQZ', 'EXPO', 'левый берег', 'район Байтерек', 'Президентский парк', 'отели St. Regis, Ritz-Carlton и Sheraton'],
-      routes: ['аэропорт - отель', 'отель - бизнес-центр', 'городской маршрут с ожиданием', 'делегация на форум', 'междугородняя поездка по Казахстану'],
-      demand: 'В Астане основной спрос формируют аэропортовые трансферы, деловые маршруты, правительственные и корпоративные мероприятия, форумы и сопровождение иностранных делегаций.',
-    },
-    en: {
-      districts: ['NQZ airport', 'EXPO area', 'left bank', 'Baiterek district', 'Presidential Park', 'St. Regis, Ritz-Carlton and Sheraton hotels'],
-      routes: ['airport to hotel', 'hotel to business center', 'city route with waiting time', 'forum delegation support', 'intercity Kazakhstan route'],
-      demand: 'Astana demand is driven by airport transfers, business routes, government and corporate events, forums and foreign delegation support.',
-    },
-    zh: {
-      districts: ['NQZ机场', 'EXPO区域', '左岸商务区', 'Baiterek区域', '总统公园', 'St. Regis、Ritz-Carlton和Sheraton酒店'],
-      routes: ['机场到酒店', '酒店到商务中心', '城市等待路线', '论坛代表团接待', '哈萨克斯坦城际路线'],
-      demand: '阿斯塔纳的主要需求来自机场接送、商务路线、政府和企业活动、论坛以及外国代表团接待。',
-    },
-  },
-  almaty: {
-    ru: {
-      districts: ['аэропорт Алматы', 'центр города', 'Бостандыкский район', 'Медеу', 'Шымбулак', 'деловые центры и премиальные отели'],
-      routes: ['аэропорт - центр', 'отель - Медеу', 'городской бизнес-маршрут', 'трансфер на мероприятие', 'поездка в горном направлении'],
-      demand: 'В Алматы сильный спрос на трансфер из аэропорта, автомобили с водителем для встреч, премиальные поездки в горном направлении, мероприятия и сопровождение гостей.',
-    },
-    en: {
-      districts: ['Almaty airport', 'city center', 'Bostandyk district', 'Medeu', 'Shymbulak', 'business centers and premium hotels'],
-      routes: ['airport to city center', 'hotel to Medeu', 'business city route', 'event transfer', 'mountain direction route'],
-      demand: 'Almaty demand is strong for airport transfers, chauffeur service for meetings, premium mountain routes, events and guest support.',
-    },
-    zh: {
-      districts: ['阿拉木图机场', '市中心', 'Bostandyk区', 'Medeu', 'Shymbulak', '商务中心和高端酒店'],
-      routes: ['机场到市中心', '酒店到Medeu', '城市商务路线', '活动接送', '山区方向路线'],
-      demand: '阿拉木图的搜索需求集中在机场接送、会议带司机用车、高端山区路线、活动交通和来宾接待。',
-    },
-  },
-  shymkent: {
-    ru: {
-      districts: ['аэропорт Шымкент', 'центр города', 'деловые кварталы', 'отели города', 'маршруты в Туркестан и по области'],
-      routes: ['аэропорт - отель', 'городской маршрут', 'Шымкент - Туркестан', 'транспорт для мероприятия', 'встреча деловых гостей'],
-      demand: 'В Шымкенте важны понятные трансферы, деловые поездки, транспорт для мероприятий и маршруты по Туркестанской области.',
-    },
-    en: {
-      districts: ['Shymkent airport', 'city center', 'business districts', 'city hotels', 'routes to Turkistan and the region'],
-      routes: ['airport to hotel', 'city route', 'Shymkent to Turkistan', 'event transport', 'business guest pickup'],
-      demand: 'Shymkent demand is focused on clear transfers, business trips, event transport and routes across the Turkistan region.',
-    },
-    zh: {
-      districts: ['奇姆肯特机场', '市中心', '商务区', '城市酒店', '前往Turkistan及周边地区路线'],
-      routes: ['机场到酒店', '城市路线', '奇姆肯特到Turkistan', '活动交通', '商务来宾接待'],
-      demand: '奇姆肯特需求集中在机场接送、商务出行、活动交通以及突厥斯坦地区路线。',
-    },
-  },
-};
-
-const SERVICE_SEO: Record<ServiceSlug, Record<Lang, {intent: string; useCases: string[]; included: string[]; faq: {q: string; a: string}[]}>> = {
-  transfer: {
-    ru: {
-      intent: 'Страница закрывает спрос на трансфер из аэропорта, встречу гостей, VIP-трансфер, трансфер до отеля, трансфер на мероприятие и групповую перевозку.',
-      useCases: ['встреча с табличкой в аэропорту', 'трансфер в отель или офис', 'сопровождение иностранного гостя', 'минивэн или автобус для группы', 'ночной или ранний рейс'],
-      included: ['контроль времени прилета', 'помощь с багажом', 'ожидание пассажира', 'чистый салон и вода', 'маршрут до точного адреса'],
-      faq: [
-        {q: 'Водитель отслеживает рейс?', a: 'Да, для аэропортового трансфера мы заранее уточняем номер рейса и корректируем подачу при изменении времени прилета.'},
-        {q: 'Можно ли встретить гостя с табличкой?', a: 'Да, водитель может встретить пассажира с табличкой имени, компании или мероприятия.'},
-      ],
-    },
-    en: {
-      intent: 'This page targets airport transfer, guest meet-and-greet, VIP transfer, hotel transfer, event transfer and group transportation searches.',
-      useCases: ['airport pickup with a sign', 'hotel or office transfer', 'foreign guest support', 'minivan or bus for a group', 'late-night or early flight'],
-      included: ['flight time monitoring', 'luggage assistance', 'passenger waiting time', 'clean cabin and water', 'route to the exact address'],
-      faq: [
-        {q: 'Does the chauffeur monitor the flight?', a: 'Yes, we confirm the flight number and adjust pickup timing if the arrival time changes.'},
-        {q: 'Can the chauffeur meet a guest with a sign?', a: 'Yes, the chauffeur can meet the passenger with a name, company or event sign.'},
-      ],
-    },
-    zh: {
-      intent: '本页面覆盖机场接送、来宾迎接、贵宾接送、酒店接送、活动接送和团队交通等搜索需求。',
-      useCases: ['机场举牌接机', '酒店或办公室接送', '外国来宾陪同', '团队商务车或巴士', '深夜或清晨航班'],
-      included: ['航班时间跟进', '协助行李', '等待乘客', '干净车厢和饮用水', '送达准确地址'],
-      faq: [
-        {q: '司机会跟进航班时间吗？', a: '会，我们会提前确认航班号，并在到达时间变化时调整接送时间。'},
-        {q: '可以举牌接机吗？', a: '可以，司机可按姓名、公司或活动名称举牌迎接乘客。'},
-      ],
-    },
-  },
-  'rent-car-with-driver': {
-    ru: {
-      intent: 'Страница закрывает запросы аренда авто с водителем, личный водитель, почасовая аренда авто, прокат премиум авто, авто на день и машина с водителем.',
-      useCases: ['деловые встречи в течение дня', 'личные поездки по городу', 'свадьба или фотосессия', 'загородный маршрут', 'VIP-сопровождение с ожиданием'],
-      included: ['почасовая или дневная аренда', 'водитель в деловом стиле', 'ожидание между встречами', 'замена автомобиля при необходимости', 'подбор класса под задачу'],
-      faq: [
-        {q: 'Какой минимальный срок аренды?', a: 'Минимальный срок зависит от города, класса автомобиля и даты. Для премиальных автомобилей условия лучше согласовать с менеджером заранее.'},
-        {q: 'Можно ли заказать автомобиль на весь день?', a: 'Да, автомобиль с водителем можно забронировать на несколько часов, полный день или серию маршрутов.'},
-      ],
-    },
-    en: {
-      intent: 'This page targets car with driver, private chauffeur, hourly chauffeur service, premium car rental, full-day car hire and executive chauffeur searches.',
-      useCases: ['business meetings throughout the day', 'private city routes', 'wedding or photo production', 'out-of-city route', 'VIP support with waiting time'],
-      included: ['hourly or daily booking', 'business-style chauffeur', 'waiting between meetings', 'vehicle replacement if needed', 'vehicle class selection'],
-      faq: [
-        {q: 'What is the minimum booking time?', a: 'The minimum depends on city, vehicle class and date. Premium vehicles are best confirmed with a manager in advance.'},
-        {q: 'Can I book a chauffeur for the whole day?', a: 'Yes, chauffeur service is available for a few hours, a full day or a chain of routes.'},
-      ],
-    },
-    zh: {
-      intent: '本页面覆盖带司机租车、私人司机、按小时租车、高端租车、全天用车和行政司机服务搜索需求。',
-      useCases: ['全天商务会议', '城市私人路线', '婚礼或拍摄', '郊区路线', '贵宾等待陪同'],
-      included: ['按小时或全天预约', '商务形象司机', '会议之间等待', '必要时更换车辆', '按任务选择车型'],
-      faq: [
-        {q: '最低预约时长是多少？', a: '最低时长取决于城市、车型和日期。高端车型建议提前与经理确认。'},
-        {q: '可以预约全天带司机用车吗？', a: '可以，支持几小时、全天或多个连续路线的用车。'},
-      ],
-    },
-  },
-  'corporate-clients': {
-    ru: {
-      intent: 'Страница закрывает корпоративный транспорт, транспорт для делегаций, развозку сотрудников, авто для конференции, транспорт для форума и обслуживание партнеров.',
-      useCases: ['транспорт для форума или конференции', 'встреча партнеров и инвесторов', 'развозка сотрудников', 'маршрут для делегации', 'единый транспортный менеджер на событие'],
-      included: ['безналичная оплата', 'закрывающие документы', 'планирование маршрутов', 'несколько автомобилей в один график', 'оперативная связь с координатором'],
-      faq: [
-        {q: 'Можно ли работать по договору?', a: 'Да, для корпоративных клиентов возможны договор, безналичная оплата и закрывающие документы.'},
-        {q: 'Можно ли организовать несколько автомобилей одновременно?', a: 'Да, мы можем подготовить несколько автомобилей, минивэнов или автобусов под единый график мероприятия.'},
-      ],
-    },
-    en: {
-      intent: 'This page targets corporate transportation, delegation transport, employee shuttle, conference transport, forum logistics and partner transportation.',
-      useCases: ['forum or conference transport', 'partner and investor pickup', 'employee shuttle', 'delegation route', 'dedicated transport manager for an event'],
-      included: ['cashless payment', 'closing documents', 'route planning', 'multiple vehicles in one schedule', 'direct coordinator communication'],
-      faq: [
-        {q: 'Can we work under a company agreement?', a: 'Yes, corporate clients can use an agreement, cashless payment and closing documents.'},
-        {q: 'Can you organize several vehicles at once?', a: 'Yes, we can prepare several cars, minivans or buses under one event schedule.'},
-      ],
-    },
-    zh: {
-      intent: '本页面覆盖企业交通、代表团用车、员工通勤、会议交通、论坛交通和合作伙伴接待需求。',
-      useCases: ['论坛或会议交通', '合作伙伴和投资人接待', '员工通勤', '代表团路线', '活动专属交通经理'],
-      included: ['企业无现金支付', '结算文件', '路线规划', '多车辆统一排期', '协调员直接沟通'],
-      faq: [
-        {q: '可以按企业合同合作吗？', a: '可以，企业客户可使用合同、无现金支付和结算文件。'},
-        {q: '可以同时安排多辆车吗？', a: '可以，我们可为活动统一安排多辆轿车、商务车或巴士。'},
-      ],
-    },
-  },
-};
-
-const FLEET = [
-  {name: 'Mercedes-Benz S-Class', className: 'Executive', image: 'https://tulparauto.kz/img/ms223.jpg'},
-  {name: 'Mercedes-Maybach S', className: 'VIP', image: 'https://tulparauto.kz/img/photo/1571909968_0.jpg'},
-  {name: 'Mercedes-Benz V-Class', className: 'Delegation', image: 'https://tulparauto.kz/img/photo/08-v-class-250-d-wallpaper-4K.jpg'},
+    desc: 'Spacious luxury for group travel. Featuring a modular conference setup en route.',
+    features: ['Face-to-Face Seating', 'Conference Table', 'Privacy Glass']
+  }
 ];
 
-function pathFor(lang: Lang, city?: CitySlug, service?: ServiceSlug) {
-  return `/${[lang, city, service ? SERVICE_PATHS[lang][service] : undefined].filter(Boolean).join('/')}/`;
+const DOMAIN = 'https://tulparauto.kz';
+const WHATSAPP_PHONE = '77753432448';
+
+const CITY_CONTENT = {
+  Astana: {
+    ru: {
+      name: 'Астане',
+      airport: 'аэропорта NQZ',
+      local: 'EXPO, левый берег, Байтерек, St. Regis, Ritz-Carlton, Sheraton',
+    },
+    en: {
+      name: 'Astana',
+      airport: 'NQZ airport',
+      local: 'EXPO, left bank, Baiterek, St. Regis, Ritz-Carlton, Sheraton',
+    },
+    zh: {
+      name: '阿斯塔纳',
+      airport: 'NQZ机场',
+      local: 'EXPO、左岸商务区、Baiterek、St. Regis、Ritz-Carlton、Sheraton',
+    },
+  },
+  Almaty: {
+    ru: {
+      name: 'Алматы',
+      airport: 'аэропорта Алматы',
+      local: 'центр, Бостандыкский район, Медеу, Шымбулак и премиальные отели',
+    },
+    en: {
+      name: 'Almaty',
+      airport: 'Almaty airport',
+      local: 'city center, Bostandyk district, Medeu, Shymbulak and premium hotels',
+    },
+    zh: {
+      name: '阿拉木图',
+      airport: '阿拉木图机场',
+      local: '市中心、Bostandyk区、Medeu、Shymbulak和高端酒店',
+    },
+  },
+  Shymkent: {
+    ru: {
+      name: 'Шымкенте',
+      airport: 'аэропорта Шымкент',
+      local: 'центр города, деловые районы, отели и маршруты в Туркестан',
+    },
+    en: {
+      name: 'Shymkent',
+      airport: 'Shymkent airport',
+      local: 'city center, business districts, hotels and routes to Turkistan',
+    },
+    zh: {
+      name: '奇姆肯特',
+      airport: '奇姆肯特机场',
+      local: '市中心、商务区、酒店以及前往Turkistan的路线',
+    },
+  },
+};
+
+const LANG_CONTENT = {
+  EN: {
+    code: 'en',
+    label: 'English',
+    eyebrow: 'Premium transportation in Kazakhstan',
+    h1: (city: string) => <>Private Chauffeur <br/><i className="font-normal italic">in {city}</i></>,
+    lead: 'Airport transfers, chauffeur-driven cars and corporate transport for business guests, private clients and delegations. Clear coordination, executive fleet and a calm premium service protocol.',
+    primary: 'Request Booking',
+    secondary: 'Discuss Route',
+    menu: ['About Us', 'Transfer', 'Chauffeur Service', 'Corporate Clients', 'Contacts'],
+    standard: 'Service Protocol',
+    standardEyebrow: 'The Standard',
+    fleet: 'The Elite Collection',
+    fleetEyebrow: 'Active Fleet',
+    clients: 'Client Perspectives',
+    vip: 'Diplomatic & VIP Protocol',
+    vipLead: 'Discreet transportation for executives, corporate guests, delegations and official events.',
+    contact: 'Contact Us',
+    contactLead: 'Available 24/7 for urgent reservations, airport transfer, chauffeur service and corporate transport.',
+    title: (city: string) => `Tulpar Auto - premium transfer and chauffeur service in ${city}`,
+    description: (city: string) => `Premium airport transfer, chauffeur service and corporate transportation in ${city}. Mercedes-Benz, Maybach, V-Class and business-class fleet.`,
+    footer: 'Premium transfer, chauffeur service and corporate transport',
+    services: ['Airport transfer', 'Car with driver', 'Corporate transport'],
+  },
+  RU: {
+    code: 'ru',
+    label: 'Русский',
+    eyebrow: 'Премиальный транспорт в Казахстане',
+    h1: (city: string) => <>Трансфер и авто с водителем <br/><i className="font-normal italic">в {city}</i></>,
+    lead: 'Tulpar Auto организует трансфер из аэропорта, аренду авто с водителем и корпоративное транспортное обслуживание для деловых гостей, частных клиентов, компаний и делегаций.',
+    primary: 'Оставить заявку',
+    secondary: 'Обсудить маршрут',
+    menu: ['О нас', 'Трансфер', 'Авто с водителем', 'Корпоративным клиентам', 'Контакты'],
+    standard: 'Стандарт сервиса',
+    standardEyebrow: 'Протокол',
+    fleet: 'Премиальный автопарк',
+    fleetEyebrow: 'Автопарк',
+    clients: 'Отзывы клиентов',
+    vip: 'VIP и делегации',
+    vipLead: 'Деликатное транспортное сопровождение руководителей, партнеров, делегаций и официальных мероприятий.',
+    contact: 'Контакты',
+    contactLead: 'На связи 24/7 для срочных заявок, трансфера, аренды авто с водителем и корпоративного обслуживания.',
+    title: (city: string) => `Tulpar Auto - трансфер и аренда авто с водителем в ${city}`,
+    description: (city: string) => `Премиальный трансфер, аренда авто с водителем и корпоративный транспорт в ${city}. Mercedes-Benz, Maybach, V-Class и бизнес-класс.`,
+    footer: 'Премиальный трансфер, авто с водителем и корпоративный транспорт',
+    services: ['Трансфер из аэропорта', 'Аренда авто с водителем', 'Корпоративный транспорт'],
+  },
+  ZH: {
+    code: 'zh',
+    label: '中文',
+    eyebrow: '哈萨克斯坦高端交通服务',
+    h1: (city: string) => <>{city}高端接送 <br/><i className="font-normal italic">带司机租车</i></>,
+    lead: 'Tulpar Auto为商务来宾、私人客户、企业和代表团提供机场接送、带司机租车和企业交通服务，配备高端车辆与专业司机。',
+    primary: '预约服务',
+    secondary: '咨询路线',
+    menu: ['关于我们', '接送服务', '带司机租车', '企业用车', '联系'],
+    standard: '服务标准',
+    standardEyebrow: '标准流程',
+    fleet: '高端车队',
+    fleetEyebrow: '可用车辆',
+    clients: '客户评价',
+    vip: '贵宾与代表团服务',
+    vipLead: '为企业高管、商务伙伴、代表团和官方活动提供谨慎可靠的交通服务。',
+    contact: '联系我们',
+    contactLead: '24/7支持机场接送、带司机租车、企业交通和紧急预约。',
+    title: (city: string) => `Tulpar Auto - ${city}高端接送和带司机租车`,
+    description: (city: string) => `${city}高端机场接送、带司机租车和企业交通服务。Mercedes-Benz、Maybach、V-Class及商务车队。`,
+    footer: '高端接送、带司机租车和企业交通服务',
+    services: ['机场接送', '带司机租车', '企业交通'],
+  },
+};
+
+const SERVICE_PROTOCOL = {
+  EN: [
+    { num: '01', icon: Shield, title: 'Discretion', desc: 'Confidential journeys for business guests, private clients and delegations.', img: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2574' },
+    { num: '02', icon: Award, title: 'Executive Standard', desc: 'Clean vehicles, professional chauffeurs and a route confirmed before pickup.', img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=2671' },
+    { num: '03', icon: Clock, title: 'Punctual Pickup', desc: 'Airport transfers and city routes are coordinated around exact timing and flight details.', img: 'https://tulparauto.kz/img/photo/6347cbe29d733688814873.jpg' },
+    { num: '04', icon: Check, title: 'Corporate Ready', desc: 'Cashless payment, documents and transport coordination for companies and events.', img: 'https://tulparauto.kz/img/photo/a38f4771-159b-4913-a9be-a111606492a1.jpg' }
+  ],
+  RU: [
+    { num: '01', icon: Shield, title: 'Конфиденциальность', desc: 'Деликатные поездки для деловых гостей, частных клиентов, руководителей и делегаций.', img: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2574' },
+    { num: '02', icon: Award, title: 'Премиальный стандарт', desc: 'Чистый автомобиль, профессиональный водитель и маршрут, согласованный до подачи.', img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=2671' },
+    { num: '03', icon: Clock, title: 'Точная подача', desc: 'Трансфер из аэропорта и городские поездки координируются по времени и данным рейса.', img: 'https://tulparauto.kz/img/photo/6347cbe29d733688814873.jpg' },
+    { num: '04', icon: Check, title: 'Для бизнеса', desc: 'Безналичная оплата, документы и транспортная координация для компаний и мероприятий.', img: 'https://tulparauto.kz/img/photo/a38f4771-159b-4913-a9be-a111606492a1.jpg' }
+  ],
+  ZH: [
+    { num: '01', icon: Shield, title: '保密服务', desc: '为商务来宾、私人客户、企业高管和代表团提供谨慎出行。', img: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2574' },
+    { num: '02', icon: Award, title: '高端标准', desc: '整洁车辆、专业司机，并在上车前确认路线。', img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=2671' },
+    { num: '03', icon: Clock, title: '准时到达', desc: '机场接送和城市路线根据时间与航班信息协调。', img: 'https://tulparauto.kz/img/photo/6347cbe29d733688814873.jpg' },
+    { num: '04', icon: Check, title: '企业支持', desc: '支持无现金支付、文件和企业活动交通协调。', img: 'https://tulparauto.kz/img/photo/a38f4771-159b-4913-a9be-a111606492a1.jpg' }
+  ],
+};
+
+const SERVICE_ROUTES = {
+  transfer: {
+    EN: {slug: 'transfer', title: 'airport transfer', desc: 'airport meet-and-greet, hotel transfer and VIP transfer'},
+    RU: {slug: 'transfer', title: 'трансфер', desc: 'трансфер из аэропорта, встреча гостей и VIP-трансфер'},
+    ZH: {slug: 'transfer', title: '机场接送', desc: '机场接机、酒店接送和贵宾接送'},
+  },
+  chauffeur: {
+    EN: {slug: 'chauffeur-service', title: 'chauffeur service', desc: 'hourly car with driver, full-day routes and private chauffeur service'},
+    RU: {slug: 'rent-car-with-driver', title: 'аренда авто с водителем', desc: 'почасовая аренда авто, машина с водителем и поездки на день'},
+    ZH: {slug: 'chauffeur-service', title: '带司机租车', desc: '按小时租车、全天用车和私人司机服务'},
+  },
+  corporate: {
+    EN: {slug: 'corporate-transport', title: 'corporate transport', desc: 'transport for companies, delegations, forums and events'},
+    RU: {slug: 'corporate-clients', title: 'корпоративный транспорт', desc: 'транспорт для компаний, делегаций, форумов и мероприятий'},
+    ZH: {slug: 'corporate-transport', title: '企业交通服务', desc: '企业、代表团、论坛和活动交通服务'},
+  },
+};
+
+function serviceFromSlug(lang: string, slug?: string) {
+  return Object.keys(SERVICE_ROUTES).find((key) => {
+    const item = SERVICE_ROUTES[key as keyof typeof SERVICE_ROUTES][lang as keyof typeof SERVICE_ROUTES.transfer] || SERVICE_ROUTES[key as keyof typeof SERVICE_ROUTES].EN;
+    return item.slug === slug;
+  }) || '';
 }
 
-function parsePath(): {lang: Lang; city?: CitySlug; service?: ServiceSlug; kind: PageKind} {
+function getInitialRoute() {
   const parts = window.location.pathname.split('/').filter(Boolean);
-  const lang = (['ru', 'en', 'zh'].includes(parts[0]) ? parts[0] : 'ru') as Lang;
-  const city = (['astana', 'almaty', 'shymkent'].includes(parts[1]) ? parts[1] : undefined) as CitySlug | undefined;
-  const service = (Object.keys(SERVICE_PATHS[lang]).find((key) => SERVICE_PATHS[lang][key as ServiceSlug] === parts[2]) ||
-    (['transfer', 'rent-car-with-driver', 'corporate-clients'].includes(parts[2]) ? parts[2] : undefined)) as ServiceSlug | undefined;
-  return {lang, city, service, kind: service ? 'service' : city ? 'city' : 'home'};
-}
-
-function setMeta(selector: string, attr: string, value: string) {
-  let tag = document.head.querySelector(selector) as HTMLMetaElement | HTMLLinkElement | null;
-  if (!tag) {
-    tag = selector.startsWith('link') ? document.createElement('link') : document.createElement('meta');
-    if (selector.includes('description')) tag.setAttribute('name', 'description');
-    if (selector.includes('og:title')) tag.setAttribute('property', 'og:title');
-    if (selector.includes('og:description')) tag.setAttribute('property', 'og:description');
-    if (selector.startsWith('link')) tag.setAttribute('rel', 'canonical');
-    document.head.appendChild(tag);
-  }
-  tag.setAttribute(attr, value);
-}
-
-function buildSeo(lang: Lang, city?: CitySlug, service?: ServiceSlug) {
-  const cityName = city ? CITIES[city][lang].name : '';
-  const serviceName = service ? SERVICES[service][lang].label : '';
-
-  if (city && service) {
-    if (lang === 'en') {
-      return {
-        title: `${serviceName} in ${cityName} | Tulpar Auto`,
-        description: `${serviceName} in ${cityName}: premium chauffeur-driven cars for airport transfers, business routes, events and corporate transportation.`,
-        h1: `${serviceName} in ${cityName}`,
-      };
-    }
-
-    if (lang === 'zh') {
-      return {
-        title: `${cityName}${serviceName} | Tulpar Auto`,
-        description: `${cityName}${serviceName}：高端车辆、专业司机、机场接送、商务路线、活动用车和企业交通服务。`,
-        h1: `${cityName}${serviceName}`,
-      };
-    }
-
-    return {
-      title: `${serviceName} в ${cityName} | Tulpar Auto`,
-      description: `${serviceName} в ${cityName}: премиальные автомобили с профессиональным водителем, трансфер, деловые маршруты, мероприятия и корпоративное обслуживание.`,
-      h1: `${serviceName} в ${cityName}`,
-    };
-  }
-
-  if (city) {
-    if (lang === 'en') {
-      return {
-        title: `Transfers and chauffeur service in ${cityName} | Tulpar Auto`,
-        description: `Chauffeur-driven cars in ${cityName}: airport transfer, car with driver, corporate transportation, VIP routes and delegation support.`,
-        h1: `Transfers and chauffeur service in ${cityName}`,
-      };
-    }
-
-    if (lang === 'zh') {
-      return {
-        title: `${cityName}接送和带司机租车 | Tulpar Auto`,
-        description: `${cityName}带司机用车：机场接送、高端租车、企业交通、贵宾路线和代表团服务。`,
-        h1: `${cityName}接送和带司机租车`,
-      };
-    }
-
-    return {
-      title: `Трансфер и аренда авто с водителем в ${cityName} | Tulpar Auto`,
-      description: `Автомобили с водителем в ${cityName}: трансфер из аэропорта, аренда авто, корпоративный транспорт, VIP-поездки и обслуживание делегаций.`,
-      h1: `Трансфер и аренда авто с водителем в ${cityName}`,
-    };
-  }
-
-  return {
-    title: lang === 'ru'
-      ? 'Tulpar Auto — премиум трансфер и аренда авто с водителем в Казахстане'
-      : lang === 'en'
-        ? 'Tulpar Auto — premium transfers and chauffeur service in Kazakhstan'
-        : 'Tulpar Auto — 哈萨克斯坦高端接送和带司机租车',
-    description: lang === 'ru'
-      ? 'Премиальные автомобили с профессиональными водителями в Астане, Алматы и Шымкенте. Трансфер из аэропорта, аренда авто с водителем и корпоративный транспорт.'
-      : lang === 'en'
-        ? 'Premium cars with professional chauffeurs in Astana, Almaty and Shymkent. Airport transfer, chauffeur service and corporate transportation.'
-        : '在阿斯塔纳、阿拉木图和奇姆肯特提供高端车辆和专业司机。机场接送、带司机租车和企业交通服务。',
-    h1: COPY[lang].homeH1,
-  };
+  const langPart = parts[0]?.toUpperCase();
+  const cityPart = parts[1]?.toLowerCase();
+  const servicePart = parts[2]?.toLowerCase();
+  const initialLang = ['EN', 'RU', 'ZH'].includes(langPart) ? langPart : 'EN';
+  const initialCity = cityPart === 'almaty' ? 'Almaty' : cityPart === 'shymkent' ? 'Shymkent' : 'Astana';
+  const initialService = serviceFromSlug(initialLang, servicePart);
+  return {initialLang, initialCity, initialService};
 }
 
 export default function App() {
-  const [route, setRoute] = useState(parsePath);
+  const initialRoute = getInitialRoute();
+  const [city, setCity] = useState(initialRoute.initialCity);
+  const [lang, setLang] = useState(initialRoute.initialLang);
+  const [service, setService] = useState(initialRoute.initialService);
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState(0);
-
-  const {lang, city, service} = route;
-  const ui = UI[lang];
-  const copy = COPY[lang];
-  const seo = useMemo(() => buildSeo(lang, city, service), [lang, city, service]);
-  const currentCity = city ? CITIES[city][lang] : undefined;
-  const currentService = service ? SERVICES[service][lang] : undefined;
-  const citySeo = city ? CITY_SEO[city][lang] : undefined;
-  const serviceSeo = service ? SERVICE_SEO[service][lang] : undefined;
-  const pageFaq = useMemo(() => (serviceSeo ? [...serviceSeo.faq, ...copy.faq] : copy.faq), [copy.faq, serviceSeo]);
+  const [selectedCar, setSelectedCar] = useState<typeof CAR_FLEET[0] | null>(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const { scrollYProgress } = useScroll();
+  const yHero = useTransform(scrollYProgress, [0, 1], [0, 200]);
+  const content = LANG_CONTENT[lang as keyof typeof LANG_CONTENT] || LANG_CONTENT.EN;
+  const cityContent = CITY_CONTENT[city as keyof typeof CITY_CONTENT]?.[content.code as keyof typeof CITY_CONTENT.Astana] || CITY_CONTENT.Astana.en;
+  const protocol = SERVICE_PROTOCOL[lang as keyof typeof SERVICE_PROTOCOL] || SERVICE_PROTOCOL.EN;
+  const serviceMeta = service ? SERVICE_ROUTES[service as keyof typeof SERVICE_ROUTES][lang as keyof typeof SERVICE_ROUTES.transfer] : undefined;
+  const servicePath = serviceMeta ? `${serviceMeta.slug}/` : '';
+  const currentPath = `/${content.code}/${city.toLowerCase()}/${servicePath}`;
+  const baseDescription = content.description(cityContent.name);
+  const seoTitle = serviceMeta ? `Tulpar Auto - ${serviceMeta.title} in ${cityContent.name}` : content.title(cityContent.name);
+  const seoDescription = serviceMeta ? `${serviceMeta.desc} in ${cityContent.name}. ${baseDescription}` : baseDescription;
+  const whatsappText = encodeURIComponent(`${seoTitle}. ${seoDescription}`);
+  const setCityRoute = (nextCity: string) => {
+    setCity(nextCity);
+    window.history.pushState(null, '', `/${content.code}/${nextCity.toLowerCase()}/${servicePath}`);
+  };
+  const setLangRoute = (nextLang: string) => {
+    const nextContent = LANG_CONTENT[nextLang as keyof typeof LANG_CONTENT] || LANG_CONTENT.EN;
+    setLang(nextLang);
+    const nextServiceMeta = service ? SERVICE_ROUTES[service as keyof typeof SERVICE_ROUTES][nextLang as keyof typeof SERVICE_ROUTES.transfer] : undefined;
+    window.history.pushState(null, '', `/${nextContent.code}/${city.toLowerCase()}/${nextServiceMeta ? `${nextServiceMeta.slug}/` : ''}`);
+  };
 
   useEffect(() => {
-    const onPopState = () => setRoute(parsePath());
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+    document.documentElement.lang = content.code;
+    document.title = seoTitle;
 
-  useEffect(() => {
-    document.documentElement.lang = lang;
-    document.title = seo.title;
-    setMeta('meta[name="description"]', 'content', seo.description);
-    setMeta('meta[property="og:title"]', 'content', seo.title);
-    setMeta('meta[property="og:description"]', 'content', seo.description);
-    setMeta('link[rel="canonical"]', 'href', `${DOMAIN}${pathFor(lang, city, service)}`);
+    const upsertMeta = (selector: string, attr: string, value: string) => {
+      let tag = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!tag) {
+        tag = document.createElement('meta');
+        if (selector.includes('description')) tag.setAttribute('name', 'description');
+        if (selector.includes('og:title')) tag.setAttribute('property', 'og:title');
+        if (selector.includes('og:description')) tag.setAttribute('property', 'og:description');
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute(attr, value);
+    };
 
-    document.head.querySelectorAll('link[data-hreflang="true"]').forEach((node) => node.remove());
-    (Object.keys(LANGS) as Lang[]).forEach((code) => {
+    let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    canonical.href = `${DOMAIN}${currentPath}`;
+
+    upsertMeta('meta[name="description"]', 'content', seoDescription);
+    upsertMeta('meta[property="og:title"]', 'content', seoTitle);
+    upsertMeta('meta[property="og:description"]', 'content', seoDescription);
+
+    document.head.querySelectorAll('link[data-tulpar-hreflang="true"]').forEach((node) => node.remove());
+    [
+      {code: 'ru', hreflang: 'ru-KZ'},
+      {code: 'en', hreflang: 'en-KZ'},
+      {code: 'zh', hreflang: 'zh-CN'},
+      {code: 'ru', hreflang: 'x-default'},
+    ].forEach((item) => {
       const link = document.createElement('link');
       link.rel = 'alternate';
-      link.hreflang = LANGS[code].hreflang;
-      link.href = `${DOMAIN}${pathFor(code, city, service)}`;
-      link.dataset.hreflang = 'true';
+      link.hreflang = item.hreflang;
+      link.href = `${DOMAIN}/${item.code}/${city.toLowerCase()}/`;
+      link.dataset.tulparHreflang = 'true';
       document.head.appendChild(link);
     });
-    const fallback = document.createElement('link');
-    fallback.rel = 'alternate';
-    fallback.hreflang = 'x-default';
-    fallback.href = `${DOMAIN}${pathFor('ru', city, service)}`;
-    fallback.dataset.hreflang = 'true';
-    document.head.appendChild(fallback);
 
-    const jsonLd = [
+    let jsonLd = document.getElementById('tulpar-jsonld') as HTMLScriptElement | null;
+    if (!jsonLd) {
+      jsonLd = document.createElement('script');
+      jsonLd.id = 'tulpar-jsonld';
+      jsonLd.type = 'application/ld+json';
+      document.head.appendChild(jsonLd);
+    }
+    jsonLd.textContent = JSON.stringify([
       {
         '@context': 'https://schema.org',
-        '@type': city ? 'AutoRental' : 'Organization',
+        '@type': 'AutoRental',
         name: 'Tulpar Auto',
-        url: `${DOMAIN}${pathFor(lang, city, service)}`,
-        telephone: PHONE,
-        areaServed: city ? CITIES[city].en.name : ['Astana', 'Almaty', 'Shymkent'],
-        serviceType: service ? SERVICES[service].en.label : ['Airport transfer', 'Chauffeur service', 'Corporate transportation'],
+        url: `${DOMAIN}${currentPath}`,
+        telephone: '+7 775 343 24 48',
+        areaServed: city,
+        serviceType: content.services,
         availableLanguage: ['Russian', 'English', 'Chinese'],
       },
       {
         '@context': 'https://schema.org',
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          {'@type': 'ListItem', position: 1, name: ui.home, item: `${DOMAIN}${pathFor(lang)}`},
-          city ? {'@type': 'ListItem', position: 2, name: CITIES[city][lang].name, item: `${DOMAIN}${pathFor(lang, city)}`} : undefined,
-          city && service ? {'@type': 'ListItem', position: 3, name: SERVICES[service][lang].label, item: `${DOMAIN}${pathFor(lang, city, service)}`} : undefined,
-        ].filter(Boolean),
-      },
-      {
-        '@context': 'https://schema.org',
         '@type': 'FAQPage',
-        mainEntity: pageFaq.map((item) => ({
-          '@type': 'Question',
-          name: item.q,
-          acceptedAnswer: {'@type': 'Answer', text: item.a},
-        })),
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: content.code === 'ru' ? 'Можно ли заказать трансфер из аэропорта?' : content.code === 'zh' ? '可以预约机场接送吗？' : 'Can I book an airport transfer?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: content.code === 'ru' ? 'Да, водитель встретит пассажира в аэропорту, поможет с багажом и доставит по согласованному адресу.' : content.code === 'zh' ? '可以，司机将在机场迎接乘客，协助行李并送达约定地址。' : 'Yes, the chauffeur can meet the passenger at the airport, assist with luggage and drive to the agreed address.',
+            },
+          },
+        ],
       },
-    ];
-    let script = document.getElementById('tulpar-jsonld') as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement('script');
-      script.type = 'application/ld+json';
-      script.id = 'tulpar-jsonld';
-      document.head.appendChild(script);
-    }
-    script.textContent = JSON.stringify(jsonLd);
-  }, [lang, city, service, seo, pageFaq, ui.home]);
-
-  const navigate = (href: string) => {
-    window.history.pushState(null, '', href);
-    setRoute(parsePath());
-    setIsMenuOpen(false);
-    window.scrollTo({top: 0, behavior: 'smooth'});
-  };
-
-  const heroLead = currentService && currentCity
-    ? copy.serviceLead(currentService.label, currentCity.name, currentCity.airport)
-    : currentCity
-      ? copy.cityLead(currentCity.name, currentCity.airport, currentCity.local)
-      : copy.homeLead;
+    ]);
+  }, [city, content, currentPath, seoDescription, seoTitle]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-dark)] font-sans text-white overflow-x-clip selection:bg-[var(--color-gold)] selection:text-black">
+    <>
+      <div className="min-h-screen bg-[var(--color-bg-dark)] font-sans text-white overflow-x-clip selection:bg-[var(--color-gold)] selection:text-black">
+        {/* Header */}
       <header className="fixed top-0 w-full z-40 glass">
-        <div className="w-full mx-auto px-5 md:px-12 h-20 md:h-24 flex items-center justify-between">
-          <button onClick={() => navigate(pathFor(lang))} className="flex items-center gap-4 text-left">
-            <img src="https://storage.yandexcloud.kz/altyn.1992/logo(2).png" alt="Tulpar Auto" className="h-9 md:h-12 object-contain" />
-          </button>
-
-          <nav className="hidden lg:flex items-center gap-8 nav-link text-white/70">
-            <button onClick={() => navigate(pathFor(lang))} className="hover:text-[var(--color-gold)]">{ui.home}</button>
-            {city && Object.keys(SERVICES).map((slug) => (
-              <button key={slug} onClick={() => navigate(pathFor(lang, city, slug as ServiceSlug))} className="hover:text-[var(--color-gold)]">
-                {SERVICES[slug as ServiceSlug][lang].nav}
+        <div className="w-full mx-auto px-6 md:px-12 h-24 flex items-center justify-between">
+          <div className="flex items-center">
+            <img 
+              src="https://storage.yandexcloud.kz/altyn.1992/logo(2).png" 
+              alt="TulparAuto Logo" 
+              className="h-10 md:h-12 object-contain"
+            />
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setIsCityDropdownOpen(!isCityDropdownOpen);
+                  setIsLangDropdownOpen(false);
+                }}
+                className="glass-panel px-4 py-2 rounded-full flex items-center gap-3 cursor-pointer"
+              >
+                <span className="nav-link text-[var(--color-ivory)]">{city}</span>
+                <span className="text-[10px] opacity-40 italic">▼</span>
               </button>
-            ))}
-            {!city && <a href="#services" className="hover:text-[var(--color-gold)]">{ui.services}</a>}
-            <a href="#contacts" className="hover:text-[var(--color-gold)]">{ui.contacts}</a>
-          </nav>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="hidden md:flex glass-panel rounded-full p-1">
-              {(Object.keys(CITIES) as CitySlug[]).map((slug) => (
-                <button
-                  key={slug}
-                  onClick={() => navigate(pathFor(lang, slug, service))}
-                  className={`px-4 py-2 rounded-full nav-link transition-colors ${city === slug ? 'bg-[var(--color-gold)] text-black' : 'text-white/65 hover:text-white'}`}
-                >
-                  {CITIES[slug][lang].name}
-                </button>
-              ))}
+              
+              {isCityDropdownOpen && (
+                <div className="absolute top-full mt-4 right-0 min-w-[180px] bg-[#0F1115] border border-white/10 rounded-sm py-2 shadow-2xl z-50">
+                  {['Astana', 'Almaty', 'Shymkent'].map(c => (
+                    <button 
+                      key={c}
+                      onClick={() => { setCityRoute(c); setIsCityDropdownOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 nav-link hover:bg-white/5 transition-colors flex items-center justify-between ${city === c ? 'gold-text' : 'text-[var(--color-ivory)] opacity-70'}`}
+                    >
+                      {c}
+                      {city === c && <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-gold)]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex glass-panel rounded-full p-1">
-              {(Object.keys(LANGS) as Lang[]).map((code) => (
-                <button
-                  key={code}
-                  onClick={() => navigate(pathFor(code, city, service))}
-                  className={`px-3 py-2 rounded-full nav-link transition-colors ${lang === code ? 'bg-white text-black' : 'text-white/65 hover:text-white'}`}
-                  aria-label={LANGS[code].label}
-                >
-                  {LANGS[code].short}
-                </button>
-              ))}
+            
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setIsLangDropdownOpen(!isLangDropdownOpen);
+                  setIsCityDropdownOpen(false);
+                }}
+                className="glass-panel px-3 py-2 rounded-full flex items-center gap-2 cursor-pointer border border-transparent hover:border-white/10 transition-colors"
+              >
+                <span className="nav-link text-[var(--color-ivory)]">{lang}</span>
+                <span className="text-[10px] opacity-40 italic">▼</span>
+              </button>
+              
+              {isLangDropdownOpen && (
+                <div className="absolute top-full mt-4 right-0 min-w-[140px] bg-[#0F1115] border border-white/10 rounded-sm py-2 shadow-2xl z-50">
+                  {[
+                    { code: 'EN', label: 'English' },
+                    { code: 'RU', label: 'Русский' },
+                    { code: 'ZH', label: '中文' }
+                  ].map(l => (
+                    <button 
+                      key={l.code}
+                      onClick={() => { setLangRoute(l.code); setIsLangDropdownOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 nav-link hover:bg-white/5 transition-colors flex items-center justify-between ${lang === l.code ? 'gold-text' : 'text-[var(--color-ivory)] opacity-70'}`}
+                    >
+                      {l.label}
+                      {lang === l.code && <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-gold)]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <button onClick={() => setIsMenuOpen(true)} className="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10" aria-label={ui.menu}>
-              <Menu size={18} />
+            
+            <button
+              onClick={() => {
+                setIsMenuOpen(true);
+                setIsCityDropdownOpen(false);
+                setIsLangDropdownOpen(false);
+              }}
+              className="w-10 h-10 rounded-full glass-panel flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
+            >
+              <Menu size={18} className="text-[var(--color-ivory)]" />
             </button>
           </div>
         </div>
       </header>
 
+      {/* Fullscreen Menu Overlay */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="fixed inset-0 z-50 bg-[#0F1115]/95 backdrop-blur-xl px-6 md:px-12 pt-24">
-            <div className="absolute top-0 left-0 w-full h-20 md:h-24 glass flex items-center justify-between px-5 md:px-12">
-              <img src="https://storage.yandexcloud.kz/altyn.1992/logo(2).png" alt="Tulpar Auto" className="h-9 md:h-12 object-contain" />
-              <button onClick={() => setIsMenuOpen(false)} className="w-10 h-10 rounded-full glass-panel flex items-center justify-center" aria-label={ui.close}>
-                <X size={18} />
+          <motion.div
+            initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
+            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-50 bg-[#0F1115]/95 flex flex-col pt-24 px-12"
+          >
+            {/* Menu Header */}
+            <div className="absolute top-0 left-0 w-full glass h-24 flex items-center justify-between px-6 md:px-12 z-50 border-b border-white/5">
+              <div className="flex items-center">
+                <img 
+                  src="https://storage.yandexcloud.kz/altyn.1992/logo(2).png" 
+                  alt="TulparAuto Logo" 
+                  className="h-10 md:h-12 object-contain"
+                />
+              </div>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="w-10 h-10 rounded-full glass-panel flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
+              >
+                <X size={18} className="text-[var(--color-ivory)]" />
               </button>
             </div>
-            <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.2fr_1fr] gap-12 h-full pb-12 items-center">
-              <nav className="flex flex-col gap-5">
-                {[{label: ui.home, href: pathFor(lang)}, ...Object.keys(SERVICES).map((slug) => ({
-                  label: SERVICES[slug as ServiceSlug][lang].label,
-                  href: pathFor(lang, city || 'astana', slug as ServiceSlug),
-                }))].map((item, index) => (
-                  <motion.button
-                    key={item.href}
-                    initial={{opacity: 0, x: -20}}
-                    animate={{opacity: 1, x: 0}}
-                    transition={{delay: index * 0.06}}
-                    onClick={() => navigate(item.href)}
-                    className="font-serif text-left text-4xl md:text-7xl text-white/85 hover:text-[var(--color-gold)] transition-colors"
+
+            {/* Menu Content */}
+            <div className="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full relative z-10">
+               <motion.div 
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: 0.2 }}
+                 className="text-[10px] uppercase tracking-[0.3em] gold-text mb-8 md:mb-16"
+               >
+                 Tulpar Auto
+               </motion.div>
+               <nav className="flex flex-col gap-6 md:gap-10">
+                 {content.menu.map((item, i) => (
+                   <motion.div
+                     key={item}
+                     initial={{ opacity: 0, x: -30 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     transition={{ delay: 0.3 + i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                     className="overflow-hidden"
+                   >
+                     <a 
+                       href={i === 1 ? '#transfer' : i === 2 ? '#chauffeur-service' : i === 3 ? '#corporate-clients' : i === 4 ? '#contacts' : '#about-us'} 
+                       onClick={() => {
+                         const nextService = i === 1 ? 'transfer' : i === 2 ? 'chauffeur' : i === 3 ? 'corporate' : '';
+                         if (nextService) {
+                           const nextServiceMeta = SERVICE_ROUTES[nextService as keyof typeof SERVICE_ROUTES][lang as keyof typeof SERVICE_ROUTES.transfer];
+                           setService(nextService);
+                           window.history.pushState(null, '', `/${content.code}/${city.toLowerCase()}/${nextServiceMeta.slug}/`);
+                         }
+                         setIsMenuOpen(false);
+                       }}
+                       className="font-serif text-4xl md:text-7xl text-white/80 hover:text-[var(--color-gold)] hover:italic transition-all duration-500 inline-block"
+                     >
+                       {item}
+                     </a>
+                   </motion.div>
+                 ))}
+               </nav>
+            </div>
+            
+            {/* Menu Footer */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="absolute bottom-12 left-12 right-12 flex justify-between items-end border-t border-white/10 pt-8 max-w-7xl mx-auto opacity-50 text-xs font-light"
+            >
+              <div>{city} • {content.footer}</div>
+              <div className="text-right">Designed by Kaizen Imagen Studio</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hero Section */}
+      <section className="relative h-screen flex items-center overflow-hidden">
+        <motion.div 
+          style={{ y: yHero }}
+          className="absolute inset-0 w-full h-[120%] -top-[10%] z-0"
+        >
+          <img 
+            src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=2070" 
+            alt="Luxury Car Interior background" 
+            className="w-full h-full object-cover opacity-40"
+          />
+          <div className="absolute inset-0 hero-gradient" />
+        </motion.div>
+
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-12 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-20">
+          
+          <div className="col-span-12 lg:col-span-7 flex flex-col justify-center text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className="mb-4 nav-link gold-text opacity-80"
+            >
+              {content.eyebrow}
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.4 }}
+              className="text-5xl md:text-7xl lg:text-[5rem] serif font-light leading-[1.1] mb-8"
+            >
+              {content.h1(cityContent.name)}
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.8 }}
+              className="text-lg opacity-60 max-w-lg font-light leading-relaxed mb-12"
+            >
+              {content.lead}
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 1 }}
+              className="flex flex-wrap gap-6"
+            >
+              <a 
+                href={`https://wa.me/${WHATSAPP_PHONE}?text=${whatsappText}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-panel px-10 py-5 rounded-sm hover:bg-white/5 transition-colors uppercase tracking-[0.2em] text-[12px] font-semibold border-white/20 inline-block text-center"
+              >
+                {content.secondary}
+              </a>
+              <a 
+                href={`https://wa.me/${WHATSAPP_PHONE}?text=${whatsappText}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[var(--color-gold)] text-black px-10 py-5 rounded-sm uppercase tracking-[0.2em] text-[12px] font-bold shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:bg-white transition-all inline-block text-center"
+              >
+                {content.primary}
+              </a>
+            </motion.div>
+          </div>
+          
+        </div>
+      </section>
+
+      {/* Editorial Protocol Section */}
+      <section id="transfer" className="pt-8 pb-32 px-12 relative z-10 bg-[var(--color-bg-dark)] border-t border-white/5 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center text-center mb-16 relative">
+            <motion.span 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="nav-link gold-text mb-4 mt-8"
+            >
+              {content.standardEyebrow}
+            </motion.span>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-5xl md:text-7xl serif font-light tracking-tight"
+            >
+              {content.standard}
+            </motion.h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border border-white/10 p-[1px] shadow-2xl">
+            {[
+              ...protocol
+            ].map((item, i) => (
+              <motion.div 
+                key={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ margin: "-30% 0px -30% 0px", once: false }}
+                className="relative bg-[var(--color-bg-dark)] min-h-[400px] p-12 overflow-hidden flex flex-col justify-between"
+              >
+                {/* Background Animation */}
+                <motion.div 
+                  variants={{
+                    hidden: { opacity: 0, scale: 1.1 },
+                    visible: { opacity: 0.35, scale: 1 }
+                  }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="absolute inset-0 bg-cover bg-center" 
+                  style={{ backgroundImage: `url(${item.img})` }} 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg-dark)] via-transparent to-[var(--color-bg-dark)] opacity-70 pointer-events-none" />
+                
+                {/* Top content */}
+                <div className="relative z-10 flex justify-between items-start">
+                  <motion.span 
+                    variants={{ hidden: { opacity: 0.6 }, visible: { opacity: 1 } }}
+                    className="serif text-5xl md:text-6xl gold-text italic font-light tracking-tighter"
                   >
-                    {item.label}
-                  </motion.button>
-                ))}
-              </nav>
-              <div className="grid gap-4">
-                {(Object.keys(CITIES) as CitySlug[]).map((slug) => (
-                  <button key={slug} onClick={() => navigate(pathFor(lang, slug, service))} className="glass-panel p-6 text-left group">
-                    <span className="nav-link gold-text">{ui.routePrefix}</span>
-                    <span className="mt-3 flex items-center justify-between text-2xl font-serif">
-                      {CITIES[slug][lang].name}
-                      <ChevronRight className="group-hover:text-[var(--color-gold)]" />
-                    </span>
+                    {item.num}
+                  </motion.span>
+                  <motion.div variants={{ hidden: { opacity: 0.2, color: '#ffffff' }, visible: { opacity: 1, color: 'var(--color-gold)' } }}>
+                    <item.icon size={32} strokeWidth={1} />
+                  </motion.div>
+                </div>
+                
+                {/* Bottom content */}
+                <motion.div 
+                  variants={{ hidden: { y: 20 }, visible: { y: 0 } }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="relative z-10"
+                >
+                  <motion.h3 variants={{ hidden: { color: 'rgba(255,255,255,0.8)' }, visible: { color: '#ffffff' } }} className="serif text-3xl mb-4 transition-colors">
+                    {item.title}
+                  </motion.h3>
+                  <motion.p variants={{ hidden: { color: 'rgba(255,255,255,0.4)' }, visible: { color: 'rgba(255,255,255,0.9)' } }} className="text-sm leading-relaxed font-light transition-colors max-w-sm">
+                    {item.desc}
+                  </motion.p>
+                </motion.div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Automotive Showcase */}
+      <section id="chauffeur-service" className="pb-32 pt-12 bg-[var(--color-bg-dark)] relative z-10">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12">
+          <div className="text-center mb-16">
+            <div className="text-[10px] uppercase tracking-widest gold-text mb-6">{content.fleetEyebrow}</div>
+            <h2 className="text-5xl md:text-6xl mb-6 serif tracking-tight">{content.fleet}</h2>
+            <div className="w-12 h-[1px] bg-[var(--color-gold)] mx-auto" />
+          </div>
+
+          <div className="space-y-6 md:space-y-16">
+            {CAR_FLEET.map((car, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-10%" }}
+                onClick={() => {
+                  setSelectedCar(car);
+                  setGalleryIndex(0);
+                }}
+                className="relative h-[500px] md:h-[700px] rounded-lg overflow-hidden group shadow-2xl border border-white/10 cursor-pointer"
+              >
+                <img 
+                  src={car.img} 
+                  alt={car.name} 
+                  className="absolute inset-0 w-full h-full object-cover filter contrast-[1.1] grayscale-[0.2] brightness-90 group-hover:scale-105 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0F1115] via-[#0F1115]/90 via-50% to-transparent opacity-90 group-hover:opacity-100 transition-all duration-1000" />
+                
+                <div className="absolute inset-0 p-8 md:p-14 flex flex-col justify-between z-10 pointer-events-none">
+                  <div className="max-w-2xl pointer-events-auto">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-8 h-[1px] bg-[var(--color-gold)]" />
+                      <div className="text-[var(--color-gold)] text-[10px] tracking-[0.3em] uppercase opacity-90 drop-shadow-md">{car.class}</div>
+                    </div>
+                    <h3 className="serif text-4xl md:text-6xl mb-4 italic tracking-tight drop-shadow-xl">{car.name}</h3>
+                    <p className="text-white/70 font-light text-sm md:text-base leading-relaxed mb-6 max-w-lg drop-shadow-md">
+                      {car.desc}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {car.features.map(f => (
+                        <span key={f} className="glass-panel text-white border-white/10 px-4 py-2 text-xs font-light tracking-wide rounded-sm backdrop-blur-md">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-start md:justify-end mt-auto pointer-events-auto">
+                    <a 
+                      href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`${content.primary}: ${car.name}. ${seoDescription}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-[var(--color-gold)] text-black px-12 py-5 rounded-sm uppercase tracking-[0.2em] text-[12px] font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:bg-white hover:text-black transition-all whitespace-nowrap active:scale-95 text-center w-full md:w-auto overflow-hidden block"
+                    >
+                      {content.primary}
+                    </a>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Global Partners Marquee */}
+      <section className="py-12 bg-[#0F1115] relative z-10 border-y border-white/5 overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[var(--color-gold)]/5 blur-[120px] pointer-events-none" />
+
+        <div className="max-w-[1600px] mx-auto px-6 relative z-10 flex flex-col md:flex-row items-center gap-8 lg:gap-12">
+          
+          <div className="flex-shrink-0 md:border-r border-white/10 md:pr-12 md:mr-4 z-20 bg-[#0F1115]">
+            <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-[var(--color-gold)] whitespace-nowrap">Tulpar Auto • {content.services.join(' • ')}</span>
+          </div>
+
+          <div className="w-full overflow-hidden relative flex mask-gradient-x">
+             <div className="animate-marquee gap-16 md:gap-24 items-center">
+                {/* SET 1 */}
+                <img src="https://tulparauto.kz/img/logo/AIFC.png" alt="AIFC" className="h-8 md:h-10 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/Park-Inn-Logo.png" alt="Park Inn" className="h-6 md:h-8 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/sheraton-full-lockup-1.png" alt="Sheraton" className="h-6 md:h-8 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/cropped-logo-3.png" alt="Kazauen" className="h-6 md:h-8 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                
+                {/* SET 2 (exact duplicate for infinite scroll illusion) */}
+                <img src="https://tulparauto.kz/img/logo/AIFC.png" alt="AIFC" className="h-8 md:h-10 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/Park-Inn-Logo.png" alt="Park Inn" className="h-6 md:h-8 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/sheraton-full-lockup-1.png" alt="Sheraton" className="h-6 md:h-8 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+                <img src="https://tulparauto.kz/img/logo/cropped-logo-3.png" alt="Kazauen" className="h-6 md:h-8 pr-16 md:pr-24 object-contain brightness-0 invert opacity-40 hover:opacity-100 transition-all duration-500 filter" />
+             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-32 px-12 bg-[var(--color-bg-dark)] relative z-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24">
+            <h2 className="text-4xl md:text-5xl mb-6 serif tracking-tight">{content.clients}</h2>
+            <div className="w-12 h-[1px] bg-[var(--color-gold)] mx-auto" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { name: "Alikhan S.", role: "CEO, Tech Firm", date: "October 20th", img: "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=2574", text: "Impeccable service. The chauffeur arrived early, the Mercedes was pristine, and the WiFi was exceptionally fast—crucial for my remote meetings en route." },
+              { name: "Eleanor T.", role: "Diplomatic Attache", date: "November 2nd", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=2576", text: "Their protocol adherence is unmatched. Smooth convoy organization and highly secure transfer from the VIP terminal. They understand discretion perfectly." },
+              { name: "Zuhair M.", role: "Private Investor", date: "December 5th", img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=2574", text: "The epitome of luxury in Astana. Truly the only service that seamlessly caters to high-net-worth individuals without a single hiccup. Outstanding." }
+            ].map((review, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                className="glass-panel p-10 flex flex-col justify-between group hover:border-[var(--color-gold)]/30 transition-colors"
+              >
+                <div>
+                  <div className="flex gap-1.5 mb-8">
+                    {[1,2,3,4,5].map(star => <Star key={star} size={14} className="fill-[var(--color-gold)] text-[var(--color-gold)] opacity-90" />)}
+                  </div>
+                  <p className="text-sm font-light leading-relaxed opacity-80 mb-10 italic">"{review.text}"</p>
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 group-hover:border-[var(--color-gold)]/50 transition-colors">
+                    <img src={review.img} className="w-full h-full object-cover filter grayscale-[0.2]" alt={review.name} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-serif tracking-wide">{review.name}</h4>
+                    <div className="text-[10px] uppercase tracking-widest opacity-40 mt-1">{review.date}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* VIP & Delegations */}
+      <section id="corporate-clients" className="py-24 px-12 bg-[var(--color-bg-card)] relative overflow-hidden border-t border-white/5">
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, var(--color-gold) 0%, transparent 70%)' }} />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col items-center text-center mb-16">
+            <h2 className="text-4xl md:text-5xl mb-6 serif">{content.vip}</h2>
+            <p className="max-w-2xl text-white/50 text-sm tracking-wide leading-relaxed">
+              {content.vipLead}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: "Convoy Organization", desc: "Coordinated multi-vehicle fleets with seamless communication." },
+              { title: "Armored Vehicles", desc: "VR8/VR9 certified armored sedans and SUVs available." },
+              { title: "VIP Terminal (NQZ)", desc: "Tarmac tarmac-to-hotel seamless transfer from Astana VIP terminal." }
+            ].map((srv, i) => (
+              <div key={i} className="glass-panel p-8 rounded-xl text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+                  <div className="w-2 h-2 rounded-full bg-[var(--color-gold)]" />
+                </div>
+                <h3 className="font-serif text-xl mb-3">{srv.title}</h3>
+                <p className="text-xs text-white/50 leading-relaxed font-light">{srv.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-16 text-center">
+            <a 
+              href="tel:+77753432448"
+              className="bg-[var(--color-gold)] text-black px-10 py-5 rounded-sm uppercase tracking-[0.2em] text-[12px] font-bold shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:bg-white transition-all inline-block"
+            >
+              Contact VIP Manager
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Contacts Section */}
+      <section id="contacts" className="py-32 px-12 relative z-10 bg-[#0F1115] border-t border-white/5 overflow-hidden">
+        {/* Decorative background glow */}
+        <div className="absolute top-1/2 left-1/4 w-[600px] h-[600px] bg-[var(--color-gold)]/5 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
+        
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between gap-16 lg:gap-24 relative z-10">
+          <div className="max-w-xl flex flex-col justify-center">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-[1px] bg-[var(--color-gold)]" />
+              <span className="uppercase tracking-[0.2em] text-[10px] text-[var(--color-gold)] font-semibold">Get in Touch</span>
+            </div>
+            <h2 className="font-serif text-4xl md:text-6xl text-white mb-8">{content.contact}</h2>
+            <p className="text-white/50 text-lg font-light leading-relaxed mb-10 max-w-md">
+              {content.contactLead}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full lg:w-[60%]">
+            <a href="tel:+77753432448" className="glass-panel p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group border border-white/5 hover:border-[var(--color-gold)]/30 flex flex-col items-start justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-6 group-hover:border-[var(--color-gold)]/50 transition-colors">
+                <Phone className="w-5 h-5 text-[var(--color-gold)]" strokeWidth={1.5} />
+              </div>
+              <span className="block text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2">Phone Number</span>
+              <span className="text-lg font-light group-hover:text-[var(--color-gold)] transition-colors">+7 775 343 24 48</span>
+            </a>
+            
+            <a href="mailto:info@tulparauto.kz" className="glass-panel p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group border border-white/5 hover:border-[var(--color-gold)]/30 flex flex-col items-start justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-6 group-hover:border-[var(--color-gold)]/50 transition-colors">
+                <Mail className="w-5 h-5 text-[var(--color-gold)]" strokeWidth={1.5} />
+              </div>
+              <span className="block text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2">Email</span>
+              <span className="text-lg font-light group-hover:text-[var(--color-gold)] transition-colors break-all">info@tulparauto.kz</span>
+            </a>
+            
+            <a href="https://www.instagram.com/astana_arenda_avto_" target="_blank" rel="noopener noreferrer" className="glass-panel p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group border border-white/5 hover:border-[var(--color-gold)]/30 flex flex-col items-start justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-6 group-hover:border-[var(--color-gold)]/50 transition-colors">
+                <Instagram className="w-5 h-5 text-[var(--color-gold)]" strokeWidth={1.5} />
+              </div>
+              <span className="block text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2">Instagram</span>
+              <span className="text-lg font-light group-hover:text-[var(--color-gold)] transition-colors">@astana_arenda_avto_</span>
+            </a>
+            
+            <div className="glass-panel p-8 rounded-xl border border-white/5 flex flex-col items-start justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-6">
+                <MapPin className="w-5 h-5 text-[var(--color-gold)]" strokeWidth={1.5} />
+              </div>
+              <span className="block text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2">Address</span>
+              <span className="text-lg font-light leading-snug">Kazakhstan, Astana<br/>Berel st. 44</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full px-12 py-10 border-t border-white/10 flex flex-col md:flex-row items-center justify-between z-10 bg-gradient-to-t from-black/50 to-transparent">
+        <div className="flex gap-8 md:gap-16 flex-wrap justify-center text-center md:text-left mb-6 md:mb-0">
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] uppercase tracking-widest opacity-40">Service Standard</span>
+            <span className="text-xs font-medium">{content.services[0]}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] uppercase tracking-widest opacity-40">Arrival</span>
+            <span className="text-xs font-medium">{content.services[1]}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] uppercase tracking-widest opacity-40">Security</span>
+            <span className="text-xs font-medium">{content.services[2]}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[11px] opacity-40 tracking-wider">Designed by: Kaizen Imagen Studio</span>
+        </div>
+      </footer>
+      </div>
+
+      {/* Car Gallery Modal */}
+      <AnimatePresence>
+        {selectedCar && (
+          <motion.div
+            initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            animate={{ opacity: 1, backdropFilter: "blur(30px)" }}
+            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-[100] bg-[#0F1115]/80 overflow-y-auto flex flex-col"
+          >
+            <button
+              onClick={() => setSelectedCar(null)}
+              className="absolute top-8 right-8 w-12 h-12 rounded-full glass-panel flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border border-transparent hover:border-white/10 z-50 text-white"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="flex-1 flex flex-col min-h-screen md:flex-row max-w-7xl mx-auto w-full p-6 lg:p-12 gap-8 lg:gap-16 pt-24 pb-12">
+              {/* Image Gallery */}
+              <div className="flex-1 relative rounded-2xl overflow-hidden bg-black/40 border border-white/5 flex items-center justify-center group h-[40vh] md:h-auto min-h-[300px]">
+                <AnimatePresence mode="wait">
+                  <motion.img 
+                    key={galleryIndex}
+                    src={selectedCar.gallery[galleryIndex]}
+                    initial={{ opacity: 0, scale: 1.05 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </AnimatePresence>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                
+                {/* Navigation Arrows */}
+                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === 0 ? selectedCar.gallery.length - 1 : prev - 1); }}
+                    className="w-12 h-12 rounded-full glass-panel flex items-center justify-center pointer-events-auto hover:bg-white hover:text-black transition-all"
+                  >
+                    <ChevronLeft size={24} />
                   </button>
-                ))}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === selectedCar.gallery.length - 1 ? 0 : prev + 1); }}
+                    className="w-12 h-12 rounded-full glass-panel flex items-center justify-center pointer-events-auto hover:bg-white hover:text-black transition-all"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </div>
+
+                {/* Thumbnails indicator */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+                  {selectedCar.gallery.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${galleryIndex === idx ? 'w-8 bg-[var(--color-gold)]' : 'bg-white/40 hover:bg-white/80'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Side */}
+              <div className="w-full md:w-[400px] flex flex-col justify-center py-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-8 h-[1px] bg-[var(--color-gold)]" />
+                  <div className="text-[var(--color-gold)] text-[10px] tracking-[0.3em] uppercase opacity-90">{selectedCar.class}</div>
+                </div>
+                <h3 className="serif text-4xl lg:text-5xl mb-6 tracking-tight leading-tight">{selectedCar.name}</h3>
+                <p className="text-white/60 font-light text-base leading-relaxed mb-10">
+                  {selectedCar.desc}
+                </p>
+                <div className="mb-12">
+                  <div className="text-[10px] uppercase tracking-widest opacity-40 mb-4">{content.standard}</div>
+                  <div className="flex flex-col gap-3">
+                    {selectedCar.features.map(f => (
+                      <div key={f} className="flex items-center gap-3">
+                        <Check size={14} className="text-[var(--color-gold)]" />
+                        <span className="text-sm font-light text-white/80">{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <a 
+                  href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`${content.primary}: ${selectedCar.name}. ${seoDescription}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[var(--color-gold)] text-black px-12 py-5 rounded-sm uppercase tracking-[0.2em] text-[12px] font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:bg-white transition-all text-center block mt-auto"
+                >
+                  {content.primary}
+                </a>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <main>
-        <section className="relative min-h-screen flex items-center overflow-hidden pt-24">
-          <div className="absolute inset-0 z-0">
-            <img src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=2070" alt="" className="w-full h-full object-cover opacity-40" />
-            <div className="absolute inset-0 hero-gradient" />
-          </div>
-          <div className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-12 py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-end">
-            <div>
-              <div className="nav-link gold-text mb-5">{copy.eyebrow}</div>
-              <h1 className="text-4xl md:text-7xl lg:text-[5.2rem] serif font-light leading-tight mb-8">{seo.h1}</h1>
-              <p className="text-base md:text-lg text-white/65 max-w-2xl font-light leading-relaxed mb-10">{heroLead}</p>
-              <div className="flex flex-wrap gap-4">
-                <a href={`${WHATSAPP}?text=${encodeURIComponent(seo.h1)}`} target="_blank" rel="noopener noreferrer" className="bg-[var(--color-gold)] text-black px-8 py-4 rounded-sm uppercase tracking-[0.18em] text-[12px] font-bold">
-                  {ui.reserve}
-                </a>
-                <a href="tel:+77753432448" className="glass-panel px-8 py-4 rounded-sm uppercase tracking-[0.18em] text-[12px] font-semibold">
-                  {ui.consult}
-                </a>
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {copy.proof.map((item) => (
-                <div key={item} className="glass-panel p-5 min-h-[112px] flex flex-col justify-between">
-                  <Check className="text-[var(--color-gold)]" size={20} />
-                  <span className="text-sm text-white/75 leading-relaxed">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="cities" className="py-24 px-6 md:px-12 bg-[var(--color-bg-dark)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-              <div>
-                <span className="nav-link gold-text">{ui.cities}</span>
-                <h2 className="text-4xl md:text-6xl serif mt-4">{ui.cityHeading}</h2>
-              </div>
-              <p className="text-white/50 max-w-xl leading-relaxed">{seo.description}</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-px bg-white/10 border border-white/10">
-              {(Object.keys(CITIES) as CitySlug[]).map((slug) => (
-                <button key={slug} onClick={() => navigate(pathFor(lang, slug, service))} className={`text-left p-8 md:p-10 bg-[var(--color-bg-dark)] hover:bg-white/[0.04] transition-colors ${city === slug ? 'outline outline-1 outline-[var(--color-gold)]' : ''}`}>
-                  <MapPin className="text-[var(--color-gold)] mb-8" strokeWidth={1.4} />
-                  <h3 className="text-3xl serif mb-4">{CITIES[slug][lang].name}</h3>
-                  <p className="text-sm text-white/55 leading-relaxed">{CITIES[slug][lang].airport} · {CITIES[slug][lang].local}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="services" className="py-24 px-6 md:px-12 bg-[var(--color-bg-card)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto">
-            <span className="nav-link gold-text">{ui.services}</span>
-            <h2 className="text-4xl md:text-6xl serif mt-4 mb-12">{ui.servicesHeading}</h2>
-            <div className="grid lg:grid-cols-3 gap-6">
-              {(Object.keys(SERVICES) as ServiceSlug[]).map((slug) => {
-                const item = SERVICES[slug][lang];
-                const Icon = item.icon;
-                return (
-                  <article key={slug} className="glass-panel p-8 flex flex-col min-h-[430px]">
-                    <Icon className="text-[var(--color-gold)] mb-8" size={32} strokeWidth={1.3} />
-                    <h3 className="text-3xl serif mb-4">{item.title}</h3>
-                    <p className="text-sm text-white/60 leading-relaxed mb-7">{item.description}</p>
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {item.keywords.map((keyword) => (
-                        <span key={keyword} className="px-3 py-1 border border-white/10 text-[11px] text-white/55">{keyword}</span>
-                      ))}
-                    </div>
-                    <button onClick={() => navigate(pathFor(lang, city || 'astana', slug))} className="mt-auto text-left nav-link gold-text flex items-center gap-2">
-                      {item.label} <ChevronRight size={14} />
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 px-6 md:px-12 bg-[var(--color-bg-dark)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12">
-            <div>
-              <span className="nav-link gold-text">SEO Focus</span>
-              <h2 className="text-4xl md:text-6xl serif mt-4 mb-8">
-                {currentService && currentCity ? `${currentService.label}: ${currentCity.name}` : currentCity ? currentCity.name : 'Kazakhstan'}
-              </h2>
-              <p className="text-white/60 leading-relaxed mb-8">
-                {serviceSeo?.intent || citySeo?.demand || copy.homeLead}
-              </p>
-              {citySeo && (
-                <div>
-                  <h3 className="text-2xl serif mb-4">{ui.routePrefix}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {citySeo.routes.map((routeName) => (
-                      <span key={routeName} className="px-3 py-2 border border-white/10 text-sm text-white/60">{routeName}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <article className="glass-panel p-8">
-                <h3 className="text-2xl serif mb-6">{lang === 'ru' ? 'Сценарии заказа' : lang === 'en' ? 'Booking Scenarios' : '预约场景'}</h3>
-                <ul className="space-y-4 text-sm text-white/60 leading-relaxed">
-                  {(serviceSeo?.useCases || ['airport transfer', 'chauffeur service', 'corporate route', 'event transportation', 'delegation support']).map((item) => (
-                    <li key={item} className="flex gap-3">
-                      <Check size={16} className="mt-1 shrink-0 text-[var(--color-gold)]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-              <article className="glass-panel p-8">
-                <h3 className="text-2xl serif mb-6">{lang === 'ru' ? 'Что входит' : lang === 'en' ? 'What Is Included' : '服务包含'}</h3>
-                <ul className="space-y-4 text-sm text-white/60 leading-relaxed">
-                  {(serviceSeo?.included || copy.proof).map((item) => (
-                    <li key={item} className="flex gap-3">
-                      <Shield size={16} className="mt-1 shrink-0 text-[var(--color-gold)]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-              {citySeo && (
-                <article className="glass-panel p-8 md:col-span-2">
-                  <h3 className="text-2xl serif mb-6">{lang === 'ru' ? 'Локальные точки спроса' : lang === 'en' ? 'Local Demand Points' : '本地需求地点'}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {citySeo.districts.map((item) => (
-                      <span key={item} className="px-3 py-2 bg-white/[0.03] border border-white/10 text-sm text-white/60">{item}</span>
-                    ))}
-                  </div>
-                </article>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 px-6 md:px-12 bg-[var(--color-bg-dark)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-start">
-            <div>
-              <span className="nav-link gold-text">{ui.why}</span>
-              <h2 className="text-4xl md:text-6xl serif mt-4 mb-8">Tulpar Auto</h2>
-              <p className="text-white/55 leading-relaxed">{copy.corporateIntro}</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-px bg-white/10 border border-white/10">
-              {copy.process.map((step, index) => (
-                <div key={step.title} className="bg-[var(--color-bg-dark)] p-8">
-                  <span className="serif text-5xl italic gold-text">0{index + 1}</span>
-                  <h3 className="text-2xl serif mt-8 mb-4">{step.title}</h3>
-                  <p className="text-sm text-white/55 leading-relaxed">{step.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="fleet" className="py-24 px-6 md:px-12 bg-[var(--color-bg-card)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-              <div>
-                <span className="nav-link gold-text">{ui.fleet}</span>
-                <h2 className="text-4xl md:text-6xl serif mt-4">Mercedes-Benz · Maybach · V-Class</h2>
-              </div>
-              <p className="text-white/50 max-w-xl leading-relaxed">{copy.fleetIntro}</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {FLEET.map((car) => (
-                <article key={car.name} className="group overflow-hidden bg-[#0F1115] border border-white/10">
-                  <div className="aspect-[4/3] overflow-hidden">
-                    <img src={car.image} alt={car.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  </div>
-                  <div className="p-6">
-                    <span className="nav-link gold-text">{car.className}</span>
-                    <h3 className="text-2xl serif mt-3">{car.name}</h3>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="clients" className="py-24 px-6 md:px-12 bg-[var(--color-bg-dark)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-[1fr_1fr] gap-12">
-            <div>
-              <Building2 className="text-[var(--color-gold)] mb-8" size={36} strokeWidth={1.3} />
-              <h2 className="text-4xl md:text-6xl serif mb-8">{SERVICES['corporate-clients'][lang].title}</h2>
-              <p className="text-white/55 leading-relaxed">{SERVICES['corporate-clients'][lang].description}</p>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {[Shield, Clock, Award, Globe2].map((Icon, index) => (
-                <div key={index} className="glass-panel p-8">
-                  <Icon className="text-[var(--color-gold)] mb-8" strokeWidth={1.3} />
-                  <div className="flex gap-1 mb-4">{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={13} className="fill-[var(--color-gold)] text-[var(--color-gold)]" />)}</div>
-                  <p className="text-sm text-white/55 leading-relaxed">{copy.proof[index]}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 px-6 md:px-12 bg-[var(--color-bg-card)] border-t border-white/5">
-          <div className="max-w-5xl mx-auto">
-            <span className="nav-link gold-text">{ui.faqHeading}</span>
-            <h2 className="text-4xl md:text-6xl serif mt-4 mb-10">{ui.faqHeading}</h2>
-            <div className="border-y border-white/10">
-              {pageFaq.map((item, index) => (
-                <div key={item.q} className="border-b border-white/10 last:border-b-0">
-                  <button onClick={() => setOpenFaq(openFaq === index ? -1 : index)} className="w-full py-7 flex items-center justify-between gap-6 text-left">
-                    <span className="text-xl serif">{item.q}</span>
-                    <ChevronRight className={`shrink-0 transition-transform ${openFaq === index ? 'rotate-90 text-[var(--color-gold)]' : ''}`} />
-                  </button>
-                  {openFaq === index && <p className="pb-7 text-white/55 leading-relaxed">{item.a}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 px-6 md:px-12 bg-[var(--color-bg-dark)] border-t border-white/5">
-          <div className="max-w-7xl mx-auto">
-            <span className="nav-link gold-text">{ui.sitemapHeading}</span>
-            <h2 className="text-4xl md:text-6xl serif mt-4 mb-12">{ui.sitemapHeading}</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {(Object.keys(CITIES) as CitySlug[]).map((citySlug) => (
-                <div key={citySlug} className="glass-panel p-7">
-                  <button onClick={() => navigate(pathFor(lang, citySlug))} className="text-2xl serif hover:text-[var(--color-gold)]">{CITIES[citySlug][lang].name}</button>
-                  <div className="mt-6 flex flex-col gap-3">
-                    {(Object.keys(SERVICES) as ServiceSlug[]).map((serviceSlug) => (
-                      <button key={serviceSlug} onClick={() => navigate(pathFor(lang, citySlug, serviceSlug))} className="text-left text-sm text-white/55 hover:text-[var(--color-gold)]">
-                        /{lang}/{citySlug}/{serviceSlug}/ · {SERVICES[serviceSlug][lang].label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="contacts" className="py-24 px-6 md:px-12 bg-[#0F1115] border-t border-white/5">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12">
-            <div>
-              <span className="nav-link gold-text">{ui.contacts}</span>
-              <h2 className="text-4xl md:text-6xl serif mt-4 mb-8">Tulpar Auto</h2>
-              <p className="text-white/55 leading-relaxed">{ui.footerNote}</p>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <a href="tel:+77753432448" className="glass-panel p-7 hover:bg-white/5">
-                <Phone className="text-[var(--color-gold)] mb-6" />
-                <span className="block nav-link text-white/40 mb-2">Phone</span>
-                <span>{PHONE}</span>
-              </a>
-              <a href="mailto:info@tulparauto.kz" className="glass-panel p-7 hover:bg-white/5">
-                <Mail className="text-[var(--color-gold)] mb-6" />
-                <span className="block nav-link text-white/40 mb-2">Email</span>
-                <span>info@tulparauto.kz</span>
-              </a>
-              <a href={`${WHATSAPP}?text=${encodeURIComponent(seo.h1)}`} target="_blank" rel="noopener noreferrer" className="glass-panel p-7 hover:bg-white/5">
-                <MessageCircle className="text-[var(--color-gold)] mb-6" />
-                <span className="block nav-link text-white/40 mb-2">WhatsApp</span>
-                <span>{ui.reserve}</span>
-              </a>
-              <div className="glass-panel p-7">
-                <Languages className="text-[var(--color-gold)] mb-6" />
-                <span className="block nav-link text-white/40 mb-2">{ui.services}</span>
-                <span>RU · EN · 中文</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="px-6 md:px-12 py-10 border-t border-white/10 bg-black/20">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-center justify-between text-sm text-white/45">
-          <span>Tulpar Auto · {ui.footerNote}</span>
-          <div className="flex gap-4">
-            {(Object.keys(LANGS) as Lang[]).map((code) => (
-              <button key={code} onClick={() => navigate(pathFor(code, city, service))} className="hover:text-[var(--color-gold)]">{LANGS[code].short}</button>
-            ))}
-          </div>
-        </div>
-      </footer>
-
-      <a href={`${WHATSAPP}?text=${encodeURIComponent(seo.h1)}`} target="_blank" rel="noopener noreferrer" className="fixed bottom-8 right-8 z-[45] w-14 h-14 bg-[var(--color-gold)] text-black rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:bg-white hover:scale-105 transition-all">
+      {/* WhatsApp Floating Button */}
+      <a 
+        href={`https://wa.me/${WHATSAPP_PHONE}?text=${whatsappText}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-8 right-8 z-[9999] w-14 h-14 bg-[var(--color-gold)] text-black rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:bg-white hover:scale-110 transition-all duration-300 cursor-pointer"
+      >
         <MessageCircle size={26} strokeWidth={1.5} />
+        <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border-2 border-[#D4AF37] rounded-full animate-pulse" />
       </a>
-    </div>
+    </>
   );
 }
