@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Check, Shield, Clock, Award, Star, MessageCircle, Menu, X, Phone, Mail, Instagram, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -273,6 +273,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<typeof CAR_FLEET[0] | null>(null);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const yHero = useTransform(scrollYProgress, [0, 1], [0, 200]);
   const content = LANG_CONTENT[lang as keyof typeof LANG_CONTENT] || LANG_CONTENT.EN;
@@ -285,6 +286,19 @@ export default function App() {
   const seoTitle = serviceMeta ? `Tulpar Auto - ${serviceMeta.title} in ${cityContent.name}` : content.title(cityContent.name);
   const seoDescription = serviceMeta ? `${serviceMeta.desc} in ${cityContent.name}. ${baseDescription}` : baseDescription;
   const whatsappText = encodeURIComponent(`${seoTitle}. ${seoDescription}`);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+
+    const firstCard = carouselRef.current.children[0] as HTMLElement | undefined;
+    const cardWidth = firstCard?.offsetWidth || 360;
+    const gap = 24;
+    carouselRef.current.scrollBy({
+      left: direction === 'left' ? -(cardWidth + gap) : cardWidth + gap,
+      behavior: 'smooth',
+    });
+  };
+
   const setCityRoute = (nextCity: string) => {
     setCity(nextCity);
     window.history.pushState(null, '', `/${content.code}/${nextCity.toLowerCase()}/${servicePath}`);
@@ -693,67 +707,89 @@ export default function App() {
       </section>
 
       {/* Enhanced Automotive Showcase */}
-      <section id="chauffeur-service" className="pb-32 pt-12 bg-[var(--color-bg-dark)] relative z-10">
+      <section id="chauffeur-service" className="pb-24 pt-12 bg-[var(--color-bg-dark)] relative z-10 overflow-hidden">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <div className="text-[10px] uppercase tracking-widest gold-text mb-6">{content.fleetEyebrow}</div>
             <h2 className="text-5xl md:text-6xl mb-6 serif tracking-tight">{content.fleet}</h2>
             <div className="w-12 h-[1px] bg-[var(--color-gold)] mx-auto" />
           </div>
 
-          <div className="space-y-6 md:space-y-16">
-            {CAR_FLEET.map((car, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-10%" }}
-                onClick={() => {
-                  setSelectedCar(car);
-                  setGalleryIndex(0);
-                }}
-                className="relative h-[500px] md:h-[700px] rounded-lg overflow-hidden group shadow-2xl border border-white/10 cursor-pointer"
-              >
-                <img 
-                  src={car.img} 
-                  alt={car.name} 
-                  className="absolute inset-0 w-full h-full object-cover filter contrast-[1.1] grayscale-[0.2] brightness-90 group-hover:scale-105 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0F1115] via-[#0F1115]/90 via-50% to-transparent opacity-90 group-hover:opacity-100 transition-all duration-1000" />
-                
-                <div className="absolute inset-0 p-8 md:p-14 flex flex-col justify-between z-10 pointer-events-none">
-                  <div className="max-w-2xl pointer-events-auto">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-8 h-[1px] bg-[var(--color-gold)]" />
-                      <div className="text-[var(--color-gold)] text-[10px] tracking-[0.3em] uppercase opacity-90 drop-shadow-md">{car.class}</div>
+          <div className="relative group/carousel">
+            <button
+              type="button"
+              onClick={() => scrollCarousel('left')}
+              className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full glass-panel text-white opacity-0 shadow-xl transition-all hover:bg-white hover:text-black group-hover/carousel:opacity-100 md:flex"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollCarousel('right')}
+              className="absolute right-0 top-1/2 z-20 hidden h-11 w-11 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full glass-panel text-white opacity-0 shadow-xl transition-all hover:bg-white hover:text-black group-hover/carousel:opacity-100 md:flex"
+            >
+              <ChevronRight size={24} />
+            </button>
+
+            <div
+              ref={carouselRef}
+              className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 md:gap-6"
+            >
+              {CAR_FLEET.map((car, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 32 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: "-10%" }}
+                  onClick={() => {
+                    setSelectedCar(car);
+                    setGalleryIndex(0);
+                  }}
+                  className="relative h-[430px] w-[78vw] max-w-[360px] shrink-0 snap-start overflow-hidden rounded-lg border border-white/10 shadow-2xl cursor-pointer group bg-[var(--color-bg-card)] sm:w-[340px] lg:w-[360px] xl:w-[380px]"
+                >
+                  <img
+                    src={car.img}
+                    alt={car.name}
+                    className="absolute inset-0 h-full w-full object-cover filter contrast-[1.08] grayscale-[0.15] brightness-90 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F1115] via-[#0F1115]/75 to-[#0F1115]/15 transition-all duration-700 group-hover:via-[#0F1115]/65" />
+
+                  <div className="absolute inset-0 z-10 flex flex-col justify-between p-5 md:p-6 pointer-events-none">
+                    <div>
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="h-[1px] w-7 bg-[var(--color-gold)]" />
+                        <div className="text-[var(--color-gold)] text-[9px] tracking-[0.25em] uppercase opacity-90 drop-shadow-md">{car.class}</div>
+                      </div>
+                      <h3 className="serif mb-3 text-3xl italic leading-tight tracking-tight drop-shadow-xl">{car.name}</h3>
+                      <p className="line-clamp-3 text-sm font-light leading-relaxed text-white/70 drop-shadow-md">
+                        {car.desc}
+                      </p>
                     </div>
-                    <h3 className="serif text-4xl md:text-6xl mb-4 italic tracking-tight drop-shadow-xl">{car.name}</h3>
-                    <p className="text-white/70 font-light text-sm md:text-base leading-relaxed mb-6 max-w-lg drop-shadow-md">
-                      {car.desc}
-                    </p>
-                    <div className="flex flex-wrap gap-3">
-                      {car.features.map(f => (
-                        <span key={f} className="glass-panel text-white border-white/10 px-4 py-2 text-xs font-light tracking-wide rounded-sm backdrop-blur-md">
-                          {f}
-                        </span>
-                      ))}
+
+                    <div className="pointer-events-auto">
+                      <div className="mb-5 flex flex-wrap gap-2">
+                        {car.features.map(f => (
+                          <span key={f} className="glass-panel rounded-sm border-white/10 px-3 py-1.5 text-[10px] font-light tracking-wide text-white backdrop-blur-md">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+
+                      <a
+                        href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`${content.primary}: ${car.name}. ${seoDescription}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="block w-full rounded-sm bg-[var(--color-gold)] px-5 py-4 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_20px_rgba(212,175,55,0.32)] transition-all hover:bg-white hover:text-black active:scale-95"
+                      >
+                        {content.primary}
+                      </a>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-start md:justify-end mt-auto pointer-events-auto">
-                    <a 
-                      href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`${content.primary}: ${car.name}. ${seoDescription}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-[var(--color-gold)] text-black px-12 py-5 rounded-sm uppercase tracking-[0.2em] text-[12px] font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:bg-white hover:text-black transition-all whitespace-nowrap active:scale-95 text-center w-full md:w-auto overflow-hidden block"
-                    >
-                      {content.primary}
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
