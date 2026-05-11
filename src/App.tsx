@@ -9,8 +9,8 @@ const CAR_FLEET = [
     img: 'https://tulparauto.kz/img/ms223.jpg',
     gallery: [
       'https://tulparauto.kz/img/ms223.jpg',
-      '	https://tulparauto.kz/img/maybachnew/3.jpg',
-      '	https://tulparauto.kz/img/maybachnew/4.jpg'
+      'https://tulparauto.kz/img/maybachnew/3.jpg',
+      'https://tulparauto.kz/img/maybachnew/4.jpg'
     ],
     desc: 'The pinnacle of modern luxury and driving technology. Perfect for executive transfers.',
     features: ['Massage Seats', 'Evian Water', 'Wi-Fi 5G']
@@ -38,6 +38,42 @@ const CAR_FLEET = [
     ],
     desc: 'Spacious luxury for group travel. Featuring a modular conference setup en route.',
     features: ['Face-to-Face Seating', 'Conference Table', 'Privacy Glass']
+  },
+  {
+    class: 'Premium',
+    name: 'Lixiang L7',
+    img: 'https://tulparauto.kz/img/ms223.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/ms223.jpg',
+      'https://tulparauto.kz/img/maybachnew/3.jpg',
+      'https://tulparauto.kz/img/maybachnew/4.jpg'
+    ],
+    desc: 'A modern premium crossover for quiet city transfers, airport pickups and comfortable daily routes.',
+    features: ['Premium Cabin', 'Quiet Ride', 'Climate Comfort']
+  },
+  {
+    class: 'Lux',
+    name: 'Mercedes-Gelendwagen',
+    img: 'https://tulparauto.kz/img/photo/1571909968_0.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/photo/1571909968_0.jpg',
+      'https://tulparauto.kz/img/s222new/3.jpg',
+      'https://tulparauto.kz/img/s222new/4.jpg'
+    ],
+    desc: 'Iconic luxury SUV presence for VIP arrivals, city routes and confident all-season movement.',
+    features: ['SUV Comfort', 'High Seating', 'Premium Sound']
+  },
+  {
+    class: 'Business',
+    name: 'Toyota Camry 70',
+    img: 'https://tulparauto.kz/img/photo/08-v-class-250-d-wallpaper-4K.jpg',
+    gallery: [
+      'https://tulparauto.kz/img/photo/08-v-class-250-d-wallpaper-4K.jpg',
+      'https://tulparauto.kz/img/vclass/54f6c08e-fd79-48b8-88e7-b576914e43cf.jpg',
+      'https://tulparauto.kz/img/vclass/74b99ece-823f-4767-9d83-d61f1958a781.jpg'
+    ],
+    desc: 'Reliable business-class sedan for airport transfers, corporate trips and everyday chauffeur service.',
+    features: ['Business Class', 'Smooth Transfer', 'Daily Routes']
   }
 ];
 

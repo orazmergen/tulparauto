@@ -70,6 +70,15 @@ h1, h2, h3, h4, h5, h6, .font-serif, .serif {
   background: var(--color-gold);
 }
 
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
